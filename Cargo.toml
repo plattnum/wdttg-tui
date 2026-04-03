@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/wdttg-core", "crates/wdttg-tui", "crates/wdttg-mcp"]
+resolver = "2"

@@ -1,0 +1,20 @@
+[package]
+name = "wdttg-tui"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "wdttg"
+path = "src/main.rs"
+
+[dependencies]
+wdttg-core = { path = "../wdttg-core" }
+wdttg-mcp = { path = "../wdttg-mcp" }
+ratatui = "0.30"
+crossterm = "0.29"
+clap = { version = "4", features = ["derive"] }
+color-eyre = "0.6"
+chrono = "0.4"
+tokio = { version = "1", features = ["full"] }
+notify = "7"
+notify-debouncer-mini = "0.5"
