@@ -1,6 +1,6 @@
 # wdttg - Where Did The Time Go?
 
-A terminal time tracker for freelancers, built in Rust. No cloud, no subscriptions, no app store approval queues. Just markdown files and a TUI.
+A terminal time tracker for freelancers, built in Rust. No cloud, no subscriptions, no app store approval queues. Just markdown files, a TUI, and an MCP server because life's too short for time entry forms.
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/plattnum)
 
