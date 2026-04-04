@@ -431,46 +431,19 @@ impl ManageState {
         self.edit_form = form;
     }
 
-    pub fn delete_selected(&mut self, config: &mut AppConfig) {
-        match self.active_pane {
-            ManagePane::Clients => {
-                if config.clients.len() > 1 && self.client_idx < config.clients.len() {
-                    config.clients.remove(self.client_idx);
-                    if self.client_idx >= config.clients.len() {
-                        self.client_idx = config.clients.len().saturating_sub(1);
-                    }
-                    self.project_idx = 0;
-                    self.activity_idx = 0;
-                }
-            }
-            ManagePane::Projects => {
-                if let Some(client) = config.clients.get_mut(self.client_idx) {
-                    if self.project_idx < client.projects.len() {
-                        client.projects.remove(self.project_idx);
-                        if self.project_idx >= client.projects.len() {
-                            self.project_idx = client.projects.len().saturating_sub(1);
-                        }
-                    }
-                }
-            }
-            ManagePane::Activities => {
-                if let Some(client) = config.clients.get_mut(self.client_idx) {
-                    if self.activity_idx < client.activities.len() {
-                        client.activities.remove(self.activity_idx);
-                        if self.activity_idx >= client.activities.len() {
-                            self.activity_idx = client.activities.len().saturating_sub(1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     pub fn toggle_archive(&mut self, config: &mut AppConfig) {
         match self.active_pane {
             ManagePane::Clients => {
                 if let Some(client) = config.clients.get_mut(self.client_idx) {
-                    client.archived = !client.archived;
+                    let new_state = !client.archived;
+                    client.archived = new_state;
+                    // Cascade to all projects and activities
+                    for project in &mut client.projects {
+                        project.archived = new_state;
+                    }
+                    for activity in &mut client.activities {
+                        activity.archived = new_state;
+                    }
                 }
             }
             ManagePane::Projects => {

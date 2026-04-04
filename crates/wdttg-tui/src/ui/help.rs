@@ -41,8 +41,7 @@ const HELP_TEXT: &str = "\
   k / ↑         Select prev item
   n / a         Add new item
   e             Edit selected item
-  d             Delete selected item
-  A             Toggle archive
+  d / A         Toggle archive
 
  ─── Entry Form ───────────────────────
   Tab           Next field

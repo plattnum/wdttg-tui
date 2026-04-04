@@ -268,7 +268,7 @@ impl App {
             Action::Create => self.manage.open_add(),
             Action::Edit => self.manage.open_edit(&self.config),
             Action::Delete => {
-                self.manage.delete_selected(&mut self.config);
+                self.manage.toggle_archive(&mut self.config);
                 self.save_config();
             }
             Action::ToggleArchive => {

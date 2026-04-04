@@ -110,7 +110,7 @@ fn render_client_pane(
     if is_active && inner.height > 1 {
         let hint_y = inner.y + inner.height - 1;
         let hints = Span::styled(
-            " a:add e:edit d:del A:archive ",
+            " a:add e:edit d/A:archive ",
             Style::default().fg(theme.muted),
         );
         frame.render_widget(
@@ -170,7 +170,9 @@ fn render_project_pane(
                 let is_selected = i == state.project_idx;
                 let color_dot = Theme::parse_hex(&proj.color).unwrap_or(theme.accent);
 
-                let style = if is_selected && is_active {
+                let style = if proj.archived {
+                    Style::default().fg(theme.muted)
+                } else if is_selected && is_active {
                     Style::default()
                         .fg(theme.fg)
                         .bg(theme.highlight_bg)
@@ -185,10 +187,11 @@ fn render_project_pane(
                     .rate_override
                     .map(|r| format!(" ${r:.0}"))
                     .unwrap_or_default();
+                let archived_marker = if proj.archived { " ⊘" } else { "" };
 
                 let line = Line::from(vec![
                     Span::styled("● ", Style::default().fg(color_dot)),
-                    Span::styled(&proj.name, style),
+                    Span::styled(format!("{}{}", proj.name, archived_marker), style),
                     Span::styled(rate_str, Style::default().fg(theme.muted)),
                 ]);
                 ListItem::new(line)
@@ -202,7 +205,7 @@ fn render_project_pane(
         let hint_y = inner.y + inner.height - 1;
         frame.render_widget(
             Paragraph::new(Span::styled(
-                " a:add e:edit d:del ",
+                " a:add e:edit d/A:archive ",
                 Style::default().fg(theme.muted),
             )),
             Rect::new(inner.x, hint_y, inner.width, 1),
@@ -260,7 +263,9 @@ fn render_activity_pane(
                 let is_selected = i == state.activity_idx;
                 let color_dot = Theme::parse_hex(&act.color).unwrap_or(theme.accent);
 
-                let style = if is_selected && is_active {
+                let style = if act.archived {
+                    Style::default().fg(theme.muted)
+                } else if is_selected && is_active {
                     Style::default()
                         .fg(theme.fg)
                         .bg(theme.highlight_bg)
@@ -271,9 +276,10 @@ fn render_activity_pane(
                     Style::default().fg(theme.fg)
                 };
 
+                let archived_marker = if act.archived { " ⊘" } else { "" };
                 let line = Line::from(vec![
                     Span::styled("● ", Style::default().fg(color_dot)),
-                    Span::styled(&act.name, style),
+                    Span::styled(format!("{}{}", act.name, archived_marker), style),
                 ]);
                 ListItem::new(line)
             })
@@ -286,7 +292,7 @@ fn render_activity_pane(
         let hint_y = inner.y + inner.height - 1;
         frame.render_widget(
             Paragraph::new(Span::styled(
-                " a:add e:edit d:del ",
+                " a:add e:edit d/A:archive ",
                 Style::default().fg(theme.muted),
             )),
             Rect::new(inner.x, hint_y, inner.width, 1),
