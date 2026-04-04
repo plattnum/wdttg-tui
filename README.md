@@ -90,6 +90,20 @@ If running from source instead of an installed binary:
 | `list_clients` | List configured clients with projects and activities |
 | `get_status` | Today/week totals, entry counts, config summary |
 
+### Testing with MCP Inspector
+
+Use the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) to interactively test and debug the server:
+
+```bash
+# From source
+npx -y @modelcontextprotocol/inspector cargo run -p wdttg-tui -- serve
+
+# Or using the installed binary
+npx -y @modelcontextprotocol/inspector wdttg serve
+```
+
+This opens a web UI (usually `http://localhost:6274`) where you can browse available tools, invoke them with custom inputs, and inspect results.
+
 ### How it works
 
 The MCP server and TUI share the same data files in `~/.local/share/wdttg/data/`. The TUI watches for file changes, so entries created by an AI agent via MCP appear in the TUI within ~200ms.
