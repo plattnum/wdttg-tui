@@ -206,4 +206,4 @@ If this is useful to you, consider buying me a coffee.
 
 ## License
 
-Private project.
+MIT - Do whatever you want with it.
