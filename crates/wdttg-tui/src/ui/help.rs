@@ -49,7 +49,8 @@ const HELP_TEXT: &str = "\
   Shift+Tab     Previous field
   ← →           Cycle dropdown / cursor
   ↑ ↓           Cycle dropdown
-  Enter         Save entry
+  Enter         Newline (in text fields)
+  Ctrl+S        Save entry
   Esc           Cancel
   Mouse click   Focus field";
 

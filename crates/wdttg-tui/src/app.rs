@@ -361,50 +361,76 @@ impl App {
             return;
         };
 
-        match key.code {
-            KeyCode::Esc => {
-                self.entry_form = None;
-                return;
+        // Esc always cancels
+        if key.code == KeyCode::Esc {
+            self.entry_form = None;
+            return;
+        }
+
+        // Ctrl+S saves the form (works in all terminals)
+        if key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.save_form();
+            return;
+        }
+
+        // Cmd+Enter (macOS) or Ctrl+Enter (Linux) also saves
+        if key.code == KeyCode::Enter
+            && key
+                .modifiers
+                .intersects(KeyModifiers::SUPER | KeyModifiers::CONTROL)
+        {
+            self.save_form();
+            return;
+        }
+
+        // Tab/Shift+Tab navigates fields (intercept before textarea)
+        if key.code == KeyCode::Tab {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                form.prev_field();
+            } else {
+                form.next_field();
             }
-            KeyCode::Tab => {
-                if key.modifiers.contains(KeyModifiers::SHIFT) {
-                    form.prev_field();
-                } else {
-                    form.next_field();
+        } else if key.code == KeyCode::BackTab {
+            form.prev_field();
+        } else if form.focused_field.is_textarea() {
+            // Textarea fields: delegate all other keys to the textarea
+            form.handle_textarea_input(key);
+        } else {
+            // Non-textarea fields: existing behavior
+            match key.code {
+                KeyCode::Enter => {
+                    // Plain Enter on non-textarea fields saves
+                    self.save_form();
+                    return;
                 }
-            }
-            KeyCode::BackTab => form.prev_field(),
-            KeyCode::Enter => {
-                self.save_form();
-                return;
-            }
-            KeyCode::Backspace => form.backspace(),
-            KeyCode::Left => match form.focused_field {
-                FormField::Client => form.cycle_client(&self.config, false),
-                FormField::Project => form.cycle_project(&self.config, false),
-                FormField::Activity => form.cycle_activity(&self.config, false),
-                _ => form.cursor_left(),
-            },
-            KeyCode::Right => match form.focused_field {
-                FormField::Client => form.cycle_client(&self.config, true),
-                FormField::Project => form.cycle_project(&self.config, true),
-                FormField::Activity => form.cycle_activity(&self.config, true),
-                _ => form.cursor_right(),
-            },
-            KeyCode::Up => match form.focused_field {
-                FormField::Client => form.cycle_client(&self.config, false),
-                FormField::Project => form.cycle_project(&self.config, false),
-                FormField::Activity => form.cycle_activity(&self.config, false),
+                KeyCode::Backspace => form.backspace(),
+                KeyCode::Left => match form.focused_field {
+                    FormField::Client => form.cycle_client(&self.config, false),
+                    FormField::Project => form.cycle_project(&self.config, false),
+                    FormField::Activity => form.cycle_activity(&self.config, false),
+                    _ => form.cursor_left(),
+                },
+                KeyCode::Right => match form.focused_field {
+                    FormField::Client => form.cycle_client(&self.config, true),
+                    FormField::Project => form.cycle_project(&self.config, true),
+                    FormField::Activity => form.cycle_activity(&self.config, true),
+                    _ => form.cursor_right(),
+                },
+                KeyCode::Up => match form.focused_field {
+                    FormField::Client => form.cycle_client(&self.config, false),
+                    FormField::Project => form.cycle_project(&self.config, false),
+                    FormField::Activity => form.cycle_activity(&self.config, false),
+                    _ => {}
+                },
+                KeyCode::Down => match form.focused_field {
+                    FormField::Client => form.cycle_client(&self.config, true),
+                    FormField::Project => form.cycle_project(&self.config, true),
+                    FormField::Activity => form.cycle_activity(&self.config, true),
+                    _ => {}
+                },
+                KeyCode::Char(ch) => form.type_char(ch),
                 _ => {}
-            },
-            KeyCode::Down => match form.focused_field {
-                FormField::Client => form.cycle_client(&self.config, true),
-                FormField::Project => form.cycle_project(&self.config, true),
-                FormField::Activity => form.cycle_activity(&self.config, true),
-                _ => {}
-            },
-            KeyCode::Char(ch) => form.type_char(ch),
-            _ => {}
+            }
         }
 
         // Re-check overlaps after any input change

@@ -1,4 +1,6 @@
 use chrono::NaiveDateTime;
+use crossterm::event::KeyEvent;
+use tui_textarea::TextArea;
 
 use wdttg_core::config::AppConfig;
 use wdttg_core::model::{NewEntry, TimeEntry};
@@ -46,6 +48,10 @@ impl FormField {
             Self::Notes => Self::Description,
         }
     }
+
+    pub fn is_textarea(self) -> bool {
+        matches!(self, Self::Description | Self::Notes)
+    }
 }
 
 pub struct EntryFormState {
@@ -56,14 +62,31 @@ pub struct EntryFormState {
     pub client_idx: usize,
     pub project_idx: usize,  // 0 = None
     pub activity_idx: usize, // 0 = None
-    pub description: String,
-    pub notes: String,
+    pub description_textarea: TextArea<'static>,
+    pub notes_textarea: TextArea<'static>,
     pub focused_field: FormField,
     pub overlap_warning: Option<String>,
     pub error_message: Option<String>,
-    pub cursor_pos: usize, // cursor within text field
+    pub cursor_pos: usize, // cursor within single-line text fields (Start, End)
     /// Y positions of fields, populated by render for mouse click targeting.
     pub field_positions: Vec<(FormField, u16)>,
+}
+
+/// Convert a stored string (with `<br>` tags) to textarea lines.
+fn to_textarea_lines(s: &str) -> Vec<String> {
+    if s.is_empty() {
+        return vec![String::new()];
+    }
+    s.split("<br>").map(|l| l.to_string()).collect()
+}
+
+/// Convert textarea lines back to a storage string (with `<br>` tags).
+fn from_textarea_lines(textarea: &TextArea<'_>) -> String {
+    textarea.lines().join("<br>")
+}
+
+fn make_textarea(lines: Vec<String>) -> TextArea<'static> {
+    TextArea::new(lines)
 }
 
 impl EntryFormState {
@@ -78,8 +101,8 @@ impl EntryFormState {
             client_idx,
             project_idx: 0,
             activity_idx: 0,
-            description: String::new(),
-            notes: String::new(),
+            description_textarea: make_textarea(vec![String::new()]),
+            notes_textarea: make_textarea(vec![String::new()]),
             focused_field: FormField::Client,
             overlap_warning: None,
             error_message: None,
@@ -117,6 +140,9 @@ impl EntryFormState {
             0
         };
 
+        let desc_lines = to_textarea_lines(&entry.description);
+        let notes_lines = to_textarea_lines(entry.notes.as_deref().unwrap_or(""));
+
         Self {
             mode: FormMode::Edit,
             original: Some(entry.clone()),
@@ -125,12 +151,12 @@ impl EntryFormState {
             client_idx,
             project_idx,
             activity_idx,
-            description: entry.description.clone(),
-            notes: entry.notes.clone().unwrap_or_default(),
+            description_textarea: make_textarea(desc_lines),
+            notes_textarea: make_textarea(notes_lines),
             focused_field: FormField::Description,
             overlap_warning: None,
             error_message: None,
-            cursor_pos: entry.description.len(),
+            cursor_pos: entry.description.len().min(16), // reasonable cursor start
             field_positions: vec![],
         }
     }
@@ -160,10 +186,24 @@ impl EntryFormState {
         self.cursor_pos = match self.focused_field {
             FormField::Start => self.start_input.len(),
             FormField::End => self.end_input.len(),
-            FormField::Description => self.description.len(),
-            FormField::Notes => self.notes.len(),
             _ => 0,
         };
+    }
+
+    /// Pass a key event to the active textarea (Description or Notes).
+    /// Returns true if the event was handled by the textarea.
+    pub fn handle_textarea_input(&mut self, key: KeyEvent) -> bool {
+        match self.focused_field {
+            FormField::Description => {
+                self.description_textarea.input(key);
+                true
+            }
+            FormField::Notes => {
+                self.notes_textarea.input(key);
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn cycle_client(&mut self, config: &AppConfig, forward: bool) {
@@ -230,14 +270,7 @@ impl EntryFormState {
                 self.end_input.insert(self.cursor_pos, ch);
                 self.cursor_pos += 1;
             }
-            FormField::Description => {
-                self.description.insert(self.cursor_pos, ch);
-                self.cursor_pos += 1;
-            }
-            FormField::Notes => {
-                self.notes.insert(self.cursor_pos, ch);
-                self.cursor_pos += 1;
-            }
+            // Description and Notes are handled by textarea
             _ => {}
         }
     }
@@ -252,14 +285,7 @@ impl EntryFormState {
                 self.cursor_pos -= 1;
                 self.end_input.remove(self.cursor_pos);
             }
-            FormField::Description if self.cursor_pos > 0 => {
-                self.cursor_pos -= 1;
-                self.description.remove(self.cursor_pos);
-            }
-            FormField::Notes if self.cursor_pos > 0 => {
-                self.cursor_pos -= 1;
-                self.notes.remove(self.cursor_pos);
-            }
+            // Description and Notes are handled by textarea
             _ => {}
         }
     }
@@ -274,13 +300,21 @@ impl EntryFormState {
         let max = match self.focused_field {
             FormField::Start => self.start_input.len(),
             FormField::End => self.end_input.len(),
-            FormField::Description => self.description.len(),
-            FormField::Notes => self.notes.len(),
             _ => 0,
         };
         if self.cursor_pos < max {
             self.cursor_pos += 1;
         }
+    }
+
+    /// Get the description text (with <br> for newlines).
+    pub fn description(&self) -> String {
+        from_textarea_lines(&self.description_textarea)
+    }
+
+    /// Get the notes text (with <br> for newlines).
+    pub fn notes_value(&self) -> String {
+        from_textarea_lines(&self.notes_textarea)
     }
 
     /// Parse inputs and check overlaps. Returns None if invalid.
@@ -345,25 +379,23 @@ impl EntryFormState {
             None
         };
 
+        let description = self.description();
+        let notes = self.notes_value();
+
         Some(NewEntry {
             start,
             end,
-            description: self.description.clone(),
+            description,
             client: client.id.clone(),
             project,
             activity,
-            notes: if self.notes.is_empty() {
-                None
-            } else {
-                Some(self.notes.clone())
-            },
+            notes: if notes.is_empty() { None } else { Some(notes) },
         })
     }
 
     pub fn can_save(&self) -> bool {
-        self.overlap_warning.is_none()
-            && self.parse_times().is_some()
-            && !self.description.is_empty()
+        let desc = self.description();
+        self.overlap_warning.is_none() && self.parse_times().is_some() && !desc.is_empty()
     }
 
     pub fn client_name<'a>(&self, config: &'a AppConfig) -> &'a str {
