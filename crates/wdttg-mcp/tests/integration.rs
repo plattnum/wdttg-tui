@@ -665,10 +665,10 @@ fn first_run_creates_default_config() {
     assert!(config_file.exists());
     // Data directory was created
     assert!(config_root.join("data").exists());
-    // Has default "personal" client
-    assert_eq!(config.clients.len(), 1);
+    // Has default clients
+    assert_eq!(config.clients.len(), 2);
     assert_eq!(config.clients[0].id, "personal");
-    assert_eq!(config.clients[0].name, "Personal");
+    assert_eq!(config.clients[1].id, "sample-client");
 }
 
 #[test]

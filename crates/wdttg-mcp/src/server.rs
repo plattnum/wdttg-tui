@@ -631,7 +631,8 @@ impl WdttgMcpServer {
 #[tool_handler]
 impl ServerHandler for WdttgMcpServer {
     fn get_info(&self) -> ServerInfo {
+        let data_path = self.state.file_manager.data_dir().display();
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_instructions("wdttg time tracking server. Manages freelancer time entries stored in ~/.wdttg/data/ as GFM markdown tables.".to_string())
+            .with_instructions(format!("wdttg time tracking server. Manages freelancer time entries stored in {data_path} as GFM markdown tables."))
     }
 }

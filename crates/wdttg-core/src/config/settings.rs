@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Client;
 
-/// Top-level application configuration, loaded from ~/.wdttg/config.toml.
+/// Top-level application configuration, loaded from ~/.config/wdttg/config.toml.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]

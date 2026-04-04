@@ -148,31 +148,31 @@ mod tests {
 
     #[test]
     fn extract_month_key_valid() {
-        let path = PathBuf::from("/home/user/.wdttg/data/2026-04.md");
+        let path = PathBuf::from("/home/user/.local/share/wdttg/data/2026-04.md");
         assert_eq!(extract_month_key(&path), Some("2026-04".to_string()));
     }
 
     #[test]
     fn extract_month_key_ignores_tmp() {
-        let path = PathBuf::from("/home/user/.wdttg/data/2026-04.md.tmp");
+        let path = PathBuf::from("/home/user/.local/share/wdttg/data/2026-04.md.tmp");
         assert_eq!(extract_month_key(&path), None);
     }
 
     #[test]
     fn extract_month_key_ignores_lock() {
-        let path = PathBuf::from("/home/user/.wdttg/data/2026-04.md.lock");
+        let path = PathBuf::from("/home/user/.local/share/wdttg/data/2026-04.md.lock");
         assert_eq!(extract_month_key(&path), None);
     }
 
     #[test]
     fn extract_month_key_ignores_non_month() {
-        let path = PathBuf::from("/home/user/.wdttg/data/notes.md");
+        let path = PathBuf::from("/home/user/.local/share/wdttg/data/notes.md");
         assert_eq!(extract_month_key(&path), None);
     }
 
     #[test]
     fn extract_month_key_ignores_bad_format() {
-        let path = PathBuf::from("/home/user/.wdttg/data/2026-4.md");
+        let path = PathBuf::from("/home/user/.local/share/wdttg/data/2026-4.md");
         assert_eq!(extract_month_key(&path), None);
     }
 }

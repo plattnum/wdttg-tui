@@ -169,8 +169,8 @@ fn render_scrollable_timeline(
         }
 
         // Mark range highlight
-        let in_mark_range = mark_range
-            .is_some_and(|(start, end)| global_slot >= start && global_slot <= end);
+        let in_mark_range =
+            mark_range.is_some_and(|(start, end)| global_slot >= start && global_slot <= end);
         if in_mark_range {
             let is_cursor_slot = global_slot == cursor_slot;
             let mark_char = if is_cursor_slot { "▸" } else { "▎" };
@@ -179,7 +179,9 @@ fn render_scrollable_timeline(
             frame.render_widget(
                 Paragraph::new(Span::styled(
                     mark_line,
-                    Style::default().fg(theme.warning).bg(dim_color(theme.warning, 15)),
+                    Style::default()
+                        .fg(theme.warning)
+                        .bg(dim_color(theme.warning, 15)),
                 )),
                 Rect::new(content_x, y, content_width, 1),
             );
@@ -232,13 +234,9 @@ fn render_scrollable_timeline(
         let cursor_row = cursor_slot - state.scroll_offset;
         if cursor_row >= 0 && cursor_row < visible_rows {
             let y = area.y + cursor_row as u16;
-            let cursor_line =
-                format!("▸{}", "─".repeat(content_width.saturating_sub(1) as usize));
+            let cursor_line = format!("▸{}", "─".repeat(content_width.saturating_sub(1) as usize));
             frame.render_widget(
-                Paragraph::new(Span::styled(
-                    cursor_line,
-                    Style::default().fg(theme.accent),
-                )),
+                Paragraph::new(Span::styled(cursor_line, Style::default().fg(theme.accent))),
                 Rect::new(content_x, y, content_width, 1),
             );
         }
@@ -411,10 +409,7 @@ fn render_info_bar(
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(
-                    "→ {:02}:{:02} ",
-                    state.cursor_hour, state.cursor_minute
-                ),
+                format!("→ {:02}:{:02} ", state.cursor_hour, state.cursor_minute),
                 Style::default().fg(theme.fg),
             ),
             Span::styled(

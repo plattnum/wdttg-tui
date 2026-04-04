@@ -123,11 +123,11 @@ pub fn render_welcome(frame: &mut Frame, area: Rect, theme: &Theme) {
         )),
         Line::from(""),
         Line::from(Span::styled(
-            "  Your data is stored in ~/.wdttg/",
+            "  Config: ~/.config/wdttg/config.toml",
             Style::default().fg(theme.muted),
         )),
         Line::from(Span::styled(
-            "  Config: ~/.wdttg/config.toml",
+            "  Data:   ~/.local/share/wdttg/data/",
             Style::default().fg(theme.muted),
         )),
         Line::from(""),

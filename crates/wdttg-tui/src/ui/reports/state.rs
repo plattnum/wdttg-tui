@@ -20,8 +20,8 @@ pub struct ReportsState {
 
 impl ReportsState {
     pub fn new(config: &AppConfig) -> Self {
-        let config_root = config::config_dir().unwrap_or_else(|_| ".wdttg".into());
-        let data_dir = config::data_dir(config, &config_root);
+        let data_dir =
+            config::data_dir(config).unwrap_or_else(|_| ".local/share/wdttg/data".into());
         let today = Local::now().date_naive();
         let range = DateRange::from_preset(
             TimeRangePreset::ThisMonth,

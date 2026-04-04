@@ -15,7 +15,7 @@ use crossterm::terminal::{
 };
 use ratatui::prelude::*;
 
-use wdttg_core::config::{config_dir, config_path, data_dir, load_or_create_default};
+use wdttg_core::config::{config_path, data_dir, load_or_create_default};
 use wdttg_core::storage::file_manager::FileManager;
 
 use crate::app::App;
@@ -60,8 +60,7 @@ fn run_tui() -> color_eyre::Result<()> {
 
 fn run_mcp_server() -> color_eyre::Result<()> {
     let config = load_or_create_default()?;
-    let root = config_dir()?;
-    let data = data_dir(&config, &root);
+    let data = data_dir(&config)?;
     let file_manager = FileManager::new(data);
 
     let rt = tokio::runtime::Runtime::new()?;

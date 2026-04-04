@@ -8,7 +8,7 @@ Ported from the [where-did-the-time-go](https://github.com/plattnum/where-did-th
 
 - TUI for interactive time tracking with a vertical timeline view
 - MCP server for AI agent integration (Claude Code, etc.)
-- GFM markdown storage (one file per month in `~/.wdttg/data/`)
+- GFM markdown storage (one file per month in `~/.local/share/wdttg/data/`)
 - Client/project/activity hierarchy with billable rates
 - Overlap detection, time snapping, and report generation
 - File watching for real-time sync between TUI and MCP
@@ -34,7 +34,7 @@ cargo build --release
 wdttg
 ```
 
-On first run, creates `~/.wdttg/config.toml` with a default "Personal" client and `~/.wdttg/data/` for time entries.
+On first run, creates `~/.config/wdttg/config.toml` with a default "Personal" client and `~/.local/share/wdttg/data/` for time entries.
 
 ### MCP Server
 
@@ -92,13 +92,13 @@ If running from source instead of an installed binary:
 
 ### How it works
 
-The MCP server and TUI share the same data files in `~/.wdttg/data/`. The TUI watches for file changes, so entries created by an AI agent via MCP appear in the TUI within ~200ms.
+The MCP server and TUI share the same data files in `~/.local/share/wdttg/data/`. The TUI watches for file changes, so entries created by an AI agent via MCP appear in the TUI within ~200ms.
 
 File locking (advisory locks via `fs2`) prevents data corruption when both are writing simultaneously.
 
 ## Configuration
 
-`~/.wdttg/config.toml` defines clients, projects, activities, and preferences.
+`~/.config/wdttg/config.toml` defines clients, projects, activities, and preferences.
 
 ```toml
 [preferences]
@@ -128,7 +128,7 @@ color = "#45B7D1"
 
 ## Data Format
 
-Time entries are stored as GFM tables in `~/.wdttg/data/YYYY-MM.md`:
+Time entries are stored as GFM tables in `~/.local/share/wdttg/data/YYYY-MM.md`:
 
 ```markdown
 # 2026-03
