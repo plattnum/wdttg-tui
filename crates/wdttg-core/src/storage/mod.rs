@@ -365,6 +365,7 @@ mod tests {
                     id: "dev".into(),
                     name: "Dev".into(),
                     color: "#0000FF".into(),
+                    archived: false,
                 }],
             }],
         }

@@ -319,6 +319,7 @@ impl EditForm {
                             id: self.id.clone(),
                             name: self.name.clone(),
                             color: self.color.clone(),
+                            archived: false,
                         });
                     } else if let Some(act) = client.activities.iter_mut().find(|a| a.id == self.id)
                     {
@@ -479,7 +480,13 @@ impl ManageState {
                     }
                 }
             }
-            _ => {}
+            ManagePane::Activities => {
+                if let Some(client) = config.clients.get_mut(self.client_idx) {
+                    if let Some(activity) = client.activities.get_mut(self.activity_idx) {
+                        activity.archived = !activity.archived;
+                    }
+                }
+            }
         }
     }
 }

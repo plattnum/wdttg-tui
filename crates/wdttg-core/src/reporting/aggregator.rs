@@ -210,11 +210,13 @@ mod tests {
                             id: "dev".into(),
                             name: "Development".into(),
                             color: "#2ECC71".into(),
+                            archived: false,
                         },
                         Activity {
                             id: "meeting".into(),
                             name: "Meeting".into(),
                             color: "#E74C3C".into(),
+                            archived: false,
                         },
                     ],
                 },

@@ -13,16 +13,19 @@ pub enum AppEvent {
     Tick,
     /// A data file changed externally. Contains the month key (e.g. "2026-04").
     FileChanged(String),
+    /// The config file changed externally.
+    ConfigChanged,
 }
 
 pub struct EventHandler {
     rx: mpsc::Receiver<AppEvent>,
-    /// Keep the debouncer alive so the watcher thread doesn't stop.
+    /// Keep the debouncers alive so the watcher threads don't stop.
     _debouncer: Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>>,
+    _config_debouncer: Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>>,
 }
 
 impl EventHandler {
-    pub fn new(tick_rate: Duration, data_dir: PathBuf) -> Self {
+    pub fn new(tick_rate: Duration, data_dir: PathBuf, config_path: Option<PathBuf>) -> Self {
         let (tx, rx) = mpsc::channel();
 
         // Crossterm event polling thread
@@ -54,16 +57,22 @@ impl EventHandler {
             }
         });
 
-        // File watcher with debouncing
-        let debouncer = Self::start_watcher(&data_dir, tx);
+        // File watcher for data directory
+        let data_debouncer = Self::start_data_watcher(&data_dir, tx.clone());
+
+        // File watcher for config file
+        let config_debouncer = config_path
+            .as_ref()
+            .and_then(|p| Self::start_config_watcher(p, tx));
 
         Self {
             rx,
-            _debouncer: debouncer,
+            _debouncer: data_debouncer,
+            _config_debouncer: config_debouncer,
         }
     }
 
-    fn start_watcher(
+    fn start_data_watcher(
         data_dir: &Path,
         tx: mpsc::Sender<AppEvent>,
     ) -> Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>> {
@@ -89,14 +98,55 @@ impl EventHandler {
 
         match debouncer {
             Ok(mut debouncer) => {
-                // Create data dir if it doesn't exist so we can watch it.
-                // FileManager also creates it on first write, but we need it
-                // to exist now for the watcher.
                 let _ = std::fs::create_dir_all(data_dir);
 
                 if debouncer
                     .watcher()
                     .watch(data_dir, notify::RecursiveMode::NonRecursive)
+                    .is_ok()
+                {
+                    Some(debouncer)
+                } else {
+                    None
+                }
+            }
+            Err(_) => None,
+        }
+    }
+
+    fn start_config_watcher(
+        config_path: &Path,
+        tx: mpsc::Sender<AppEvent>,
+    ) -> Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>> {
+        let config_file = config_path.file_name()?.to_os_string();
+        let config_dir = config_path.parent()?;
+
+        let debouncer = new_debouncer(
+            Duration::from_millis(200),
+            move |result: Result<Vec<notify_debouncer_mini::DebouncedEvent>, notify::Error>| {
+                let events = match result {
+                    Ok(events) => events,
+                    Err(_) => return,
+                };
+
+                for event in events {
+                    if event.kind != DebouncedEventKind::Any {
+                        continue;
+                    }
+                    // Only fire for the config file itself, not .tmp or other files
+                    if event.path.file_name() == Some(&config_file) {
+                        let _ = tx.send(AppEvent::ConfigChanged);
+                        break;
+                    }
+                }
+            },
+        );
+
+        match debouncer {
+            Ok(mut debouncer) => {
+                if debouncer
+                    .watcher()
+                    .watch(config_dir, notify::RecursiveMode::NonRecursive)
                     .is_ok()
                 {
                     Some(debouncer)

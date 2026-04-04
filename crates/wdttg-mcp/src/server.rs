@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Local;
 use rmcp::{
@@ -9,12 +9,12 @@ use rmcp::{
 };
 use serde_json::json;
 
-use wdttg_core::config::AppConfig;
-use wdttg_core::model::{DateRange, EntryFilter, NewEntry};
+use wdttg_core::config::{self, AppConfig};
+use wdttg_core::model::{Activity, Client, DateRange, EntryFilter, NewEntry, Project};
 use wdttg_core::reporting::generate_report;
 use wdttg_core::storage::cache::MonthCache;
 use wdttg_core::storage::file_manager::FileManager;
-use wdttg_core::storage::{self};
+use wdttg_core::storage::{self as storage};
 use wdttg_core::time_utils::{
     compute_available_slots, find_adjacent, format_duration, snap_to_grid,
 };
@@ -25,7 +25,7 @@ use crate::params::*;
 
 /// Shared state across MCP tool invocations.
 pub struct McpState {
-    pub config: AppConfig,
+    pub config: RwLock<AppConfig>,
     pub file_manager: FileManager,
     pub cache: Mutex<MonthCache>,
 }
@@ -52,7 +52,8 @@ impl WdttgMcpServer {
         description = "List time entries within a date range. Supports preset ranges (today, this_week, this_month, etc.) and filtering by client, project, activity, or description text."
     )]
     fn list_entries(&self, Parameters(params): Parameters<ListEntriesParams>) -> String {
-        let week_start = &self.state.config.preferences.week_start;
+        let config = self.state.config.read().unwrap();
+        let week_start = &config.preferences.week_start;
         let range = match resolve_date_range(
             &params.start_date,
             &params.end_date,
@@ -202,7 +203,8 @@ impl WdttgMcpServer {
         description = "Generate an aggregated time report grouped by client, project, and activity. Supports date range presets and filtering."
     )]
     fn generate_report(&self, Parameters(params): Parameters<GenerateReportParams>) -> String {
-        let week_start = &self.state.config.preferences.week_start;
+        let config = self.state.config.read().unwrap();
+        let week_start = &config.preferences.week_start;
         let range = match resolve_date_range(
             &params.start_date,
             &params.end_date,
@@ -227,7 +229,7 @@ impl WdttgMcpServer {
                 Err(e) => return error_json(&e),
             };
 
-        let reports = generate_report(&range, &entries, &self.state.config);
+        let reports = generate_report(&range, &entries, &config);
 
         let total_minutes: i64 = reports.iter().map(|r| r.total_minutes).sum();
         let total_billable: f64 = reports.iter().map(|r| r.billable_amount).sum();
@@ -290,11 +292,10 @@ impl WdttgMcpServer {
         description = "List all configured clients with their projects and activities. Optionally include archived clients."
     )]
     fn list_clients(&self, Parameters(params): Parameters<ListClientsParams>) -> String {
+        let config = self.state.config.read().unwrap();
         let include_archived = params.include_archived.unwrap_or(false);
 
-        let clients: Vec<_> = self
-            .state
-            .config
+        let clients: Vec<_> = config
             .clients
             .iter()
             .filter(|c| include_archived || !c.archived)
@@ -316,11 +317,13 @@ impl WdttgMcpServer {
                 let activities: Vec<_> = c
                     .activities
                     .iter()
+                    .filter(|a| include_archived || !a.archived)
                     .map(|a| {
                         json!({
                             "id": a.id,
                             "name": a.name,
                             "color": a.color,
+                            "archived": a.archived,
                         })
                     })
                     .collect();
@@ -344,8 +347,9 @@ impl WdttgMcpServer {
         description = "Get current status: today's date, today/this-week totals, entry counts, and configuration summary."
     )]
     fn get_status(&self) -> String {
+        let config = self.state.config.read().unwrap();
         let today = Local::now().date_naive();
-        let week_start = &self.state.config.preferences.week_start;
+        let week_start = &config.preferences.week_start;
 
         let mut cache = self.state.cache.lock().unwrap();
 
@@ -378,10 +382,10 @@ impl WdttgMcpServer {
             "this_week_entry_count": week_entries.len(),
             "config_summary": {
                 "data_dir": self.state.file_manager.data_dir().to_string_lossy(),
-                "client_count": self.state.config.clients.len(),
-                "snap_minutes": self.state.config.preferences.snap_minutes,
-                "time_format": self.state.config.preferences.time_format,
-                "week_start": self.state.config.preferences.week_start,
+                "client_count": config.clients.len(),
+                "snap_minutes": config.preferences.snap_minutes,
+                "time_format": config.preferences.time_format,
+                "week_start": config.preferences.week_start,
             },
         })
         .to_string()
@@ -464,6 +468,7 @@ impl WdttgMcpServer {
         description = "Create a new time entry. Validates client/project/activity against config and checks for overlaps. Supports snap_to_grid for rounding times."
     )]
     fn create_entry(&self, Parameters(params): Parameters<CreateEntryParams>) -> String {
+        let config = self.state.config.read().unwrap();
         let mut start = match parse_datetime(&params.start) {
             Ok(dt) => dt,
             Err(e) => return validation_error(&e),
@@ -474,7 +479,7 @@ impl WdttgMcpServer {
         };
 
         if params.snap_to_grid.unwrap_or(false) {
-            let snap = self.state.config.preferences.snap_minutes;
+            let snap = config.preferences.snap_minutes;
             start = snap_to_grid(start, snap);
             end = snap_to_grid(end, snap);
         }
@@ -490,12 +495,7 @@ impl WdttgMcpServer {
         };
 
         let mut cache = self.state.cache.lock().unwrap();
-        match storage::create_entry(
-            new,
-            &self.state.config,
-            &self.state.file_manager,
-            &mut cache,
-        ) {
+        match storage::create_entry(new, &config, &self.state.file_manager, &mut cache) {
             Ok(entry) => json!({ "entry": entry_to_json(&entry) }).to_string(),
             Err(e) => error_json(&e),
         }
@@ -505,6 +505,7 @@ impl WdttgMcpServer {
         description = "Update an existing time entry. Identify by entry_id or original start/end timestamps. Supports partial updates: omitted fields keep their current values."
     )]
     fn update_entry(&self, Parameters(params): Parameters<UpdateEntryParams>) -> String {
+        let config = self.state.config.read().unwrap();
         let mut cache = self.state.cache.lock().unwrap();
 
         // Resolve the existing entry
@@ -582,7 +583,7 @@ impl WdttgMcpServer {
             original_start,
             original_end,
             updated,
-            &self.state.config,
+            &config,
             &self.state.file_manager,
             &mut cache,
         ) {
@@ -625,6 +626,233 @@ impl WdttgMcpServer {
             Ok(()) => json!({ "deleted": true, "start": start.format("%Y-%m-%d %H:%M").to_string(), "end": end.format("%Y-%m-%d %H:%M").to_string() }).to_string(),
             Err(e) => error_json(&e),
         }
+    }
+
+    // --- Config management tools ---
+
+    #[tool(description = "Create a new client. Requires a unique ID, name, color, and rate.")]
+    fn create_client(&self, Parameters(params): Parameters<CreateClientParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        if config.clients.iter().any(|c| c.id == params.id) {
+            return validation_error(&format!("client ID '{}' already exists", params.id));
+        }
+        let client = Client {
+            id: params.id,
+            name: params.name,
+            color: params.color,
+            rate: params.rate,
+            currency: params.currency.unwrap_or_else(|| "USD".into()),
+            archived: false,
+            address: params.address,
+            email: params.email,
+            tax_id: params.tax_id,
+            payment_terms: params.payment_terms,
+            notes: params.notes,
+            projects: vec![],
+            activities: vec![],
+        };
+        let result = json!({ "client": { "id": client.id, "name": client.name } });
+        config.clients.push(client);
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(
+        description = "Update an existing client's fields. Only provided fields are changed; omitted fields keep their current values."
+    )]
+    fn update_client(&self, Parameters(params): Parameters<UpdateClientParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.id) else {
+            return validation_error(&format!("client '{}' not found", params.id));
+        };
+        if let Some(name) = params.name {
+            client.name = name;
+        }
+        if let Some(color) = params.color {
+            client.color = color;
+        }
+        if let Some(rate) = params.rate {
+            client.rate = rate;
+        }
+        if let Some(currency) = params.currency {
+            client.currency = currency;
+        }
+        if let Some(address) = params.address {
+            client.address = Some(address);
+        }
+        if let Some(email) = params.email {
+            client.email = Some(email);
+        }
+        if let Some(tax_id) = params.tax_id {
+            client.tax_id = Some(tax_id);
+        }
+        if let Some(payment_terms) = params.payment_terms {
+            client.payment_terms = Some(payment_terms);
+        }
+        if let Some(notes) = params.notes {
+            client.notes = Some(notes);
+        }
+        let result = json!({ "updated": true, "id": client.id, "name": client.name });
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(
+        description = "Archive or unarchive a client. Archived clients are hidden from entry form dropdowns but historical data is preserved."
+    )]
+    fn archive_client(&self, Parameters(params): Parameters<ArchiveClientParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.id) else {
+            return validation_error(&format!("client '{}' not found", params.id));
+        };
+        client.archived = params.archived;
+        let result = json!({ "id": client.id, "archived": client.archived });
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(
+        description = "Create a new project under a client. Requires a unique ID within the client."
+    )]
+    fn create_project(&self, Parameters(params): Parameters<CreateProjectParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.client_id) else {
+            return validation_error(&format!("client '{}' not found", params.client_id));
+        };
+        if client.projects.iter().any(|p| p.id == params.id) {
+            return validation_error(&format!(
+                "project ID '{}' already exists under client '{}'",
+                params.id, params.client_id
+            ));
+        }
+        let project = Project {
+            id: params.id,
+            name: params.name,
+            color: params.color,
+            rate_override: params.rate_override,
+            archived: false,
+        };
+        let result = json!({ "project": { "id": project.id, "name": project.name, "client_id": params.client_id } });
+        client.projects.push(project);
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(description = "Update an existing project's fields. Only provided fields are changed.")]
+    fn update_project(&self, Parameters(params): Parameters<UpdateProjectParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.client_id) else {
+            return validation_error(&format!("client '{}' not found", params.client_id));
+        };
+        let Some(project) = client.projects.iter_mut().find(|p| p.id == params.id) else {
+            return validation_error(&format!("project '{}' not found", params.id));
+        };
+        if let Some(name) = params.name {
+            project.name = name;
+        }
+        if let Some(color) = params.color {
+            project.color = color;
+        }
+        if let Some(rate_override) = params.rate_override {
+            project.rate_override = Some(rate_override);
+        }
+        let result = json!({ "updated": true, "id": project.id, "name": project.name });
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(description = "Archive or unarchive a project under a client.")]
+    fn archive_project(&self, Parameters(params): Parameters<ArchiveProjectParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.client_id) else {
+            return validation_error(&format!("client '{}' not found", params.client_id));
+        };
+        let Some(project) = client.projects.iter_mut().find(|p| p.id == params.id) else {
+            return validation_error(&format!("project '{}' not found", params.id));
+        };
+        project.archived = params.archived;
+        let result = json!({ "id": project.id, "archived": project.archived });
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(
+        description = "Create a new activity under a client. Requires a unique ID within the client."
+    )]
+    fn create_activity(&self, Parameters(params): Parameters<CreateActivityParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.client_id) else {
+            return validation_error(&format!("client '{}' not found", params.client_id));
+        };
+        if client.activities.iter().any(|a| a.id == params.id) {
+            return validation_error(&format!(
+                "activity ID '{}' already exists under client '{}'",
+                params.id, params.client_id
+            ));
+        }
+        let activity = Activity {
+            id: params.id,
+            name: params.name,
+            color: params.color,
+            archived: false,
+        };
+        let result = json!({ "activity": { "id": activity.id, "name": activity.name, "client_id": params.client_id } });
+        client.activities.push(activity);
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(description = "Update an existing activity's fields. Only provided fields are changed.")]
+    fn update_activity(&self, Parameters(params): Parameters<UpdateActivityParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.client_id) else {
+            return validation_error(&format!("client '{}' not found", params.client_id));
+        };
+        let Some(activity) = client.activities.iter_mut().find(|a| a.id == params.id) else {
+            return validation_error(&format!("activity '{}' not found", params.id));
+        };
+        if let Some(name) = params.name {
+            activity.name = name;
+        }
+        if let Some(color) = params.color {
+            activity.color = color;
+        }
+        let result = json!({ "updated": true, "id": activity.id, "name": activity.name });
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
+    }
+
+    #[tool(description = "Archive or unarchive an activity under a client.")]
+    fn archive_activity(&self, Parameters(params): Parameters<ArchiveActivityParams>) -> String {
+        let mut config = self.state.config.write().unwrap();
+        let Some(client) = config.clients.iter_mut().find(|c| c.id == params.client_id) else {
+            return validation_error(&format!("client '{}' not found", params.client_id));
+        };
+        let Some(activity) = client.activities.iter_mut().find(|a| a.id == params.id) else {
+            return validation_error(&format!("activity '{}' not found", params.id));
+        };
+        activity.archived = params.archived;
+        let result = json!({ "id": activity.id, "archived": activity.archived });
+        if let Err(e) = config::save_config(&config) {
+            return error_json(&e);
+        }
+        result.to_string()
     }
 }
 

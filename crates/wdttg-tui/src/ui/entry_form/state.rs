@@ -233,30 +233,49 @@ impl EntryFormState {
     }
 
     pub fn cycle_project(&mut self, config: &AppConfig, forward: bool) {
-        let count = config
+        let projects = config
             .clients
             .get(self.client_idx)
-            .map(|c| c.projects.len())
-            .unwrap_or(0)
-            + 1; // +1 for None option
-        if forward {
-            self.project_idx = (self.project_idx + 1) % count;
-        } else {
-            self.project_idx = (self.project_idx + count - 1) % count;
+            .map(|c| &c.projects[..])
+            .unwrap_or(&[]);
+        let count = projects.len() + 1; // +1 for None option
+        let start = self.project_idx;
+        loop {
+            if forward {
+                self.project_idx = (self.project_idx + 1) % count;
+            } else {
+                self.project_idx = (self.project_idx + count - 1) % count;
+            }
+            // Index 0 = None (always valid), otherwise skip archived
+            if self.project_idx == 0
+                || !projects[self.project_idx - 1].archived
+                || self.project_idx == start
+            {
+                break;
+            }
         }
     }
 
     pub fn cycle_activity(&mut self, config: &AppConfig, forward: bool) {
-        let count = config
+        let activities = config
             .clients
             .get(self.client_idx)
-            .map(|c| c.activities.len())
-            .unwrap_or(0)
-            + 1;
-        if forward {
-            self.activity_idx = (self.activity_idx + 1) % count;
-        } else {
-            self.activity_idx = (self.activity_idx + count - 1) % count;
+            .map(|c| &c.activities[..])
+            .unwrap_or(&[]);
+        let count = activities.len() + 1;
+        let start = self.activity_idx;
+        loop {
+            if forward {
+                self.activity_idx = (self.activity_idx + 1) % count;
+            } else {
+                self.activity_idx = (self.activity_idx + count - 1) % count;
+            }
+            if self.activity_idx == 0
+                || !activities[self.activity_idx - 1].archived
+                || self.activity_idx == start
+            {
+                break;
+            }
         }
     }
 

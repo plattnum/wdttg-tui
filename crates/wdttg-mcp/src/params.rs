@@ -140,3 +140,140 @@ pub struct ListClientsParams {
     /// Include archived clients in results.
     pub include_archived: Option<bool>,
 }
+
+/// Parameters for the `create_client` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateClientParams {
+    /// Unique client ID (lowercase, no spaces).
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// Hex color (e.g. "#FF6B6B").
+    pub color: String,
+    /// Hourly rate. Use 0.0 for non-billable.
+    pub rate: f64,
+    /// Currency code (defaults to "USD").
+    pub currency: Option<String>,
+    /// Client address.
+    pub address: Option<String>,
+    /// Client email.
+    pub email: Option<String>,
+    /// Tax ID.
+    pub tax_id: Option<String>,
+    /// Payment terms (e.g. "Net 30").
+    pub payment_terms: Option<String>,
+    /// Notes about the client.
+    pub notes: Option<String>,
+}
+
+/// Parameters for the `update_client` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateClientParams {
+    /// Client ID to update.
+    pub id: String,
+    /// New display name.
+    pub name: Option<String>,
+    /// New hex color.
+    pub color: Option<String>,
+    /// New hourly rate.
+    pub rate: Option<f64>,
+    /// New currency code.
+    pub currency: Option<String>,
+    /// New address.
+    pub address: Option<String>,
+    /// New email.
+    pub email: Option<String>,
+    /// New tax ID.
+    pub tax_id: Option<String>,
+    /// New payment terms.
+    pub payment_terms: Option<String>,
+    /// New notes.
+    pub notes: Option<String>,
+}
+
+/// Parameters for the `archive_client` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ArchiveClientParams {
+    /// Client ID.
+    pub id: String,
+    /// Set to true to archive, false to unarchive.
+    pub archived: bool,
+}
+
+/// Parameters for the `create_project` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateProjectParams {
+    /// Client ID that owns this project.
+    pub client_id: String,
+    /// Unique project ID within the client (lowercase, no spaces).
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// Hex color.
+    pub color: String,
+    /// Override the client's hourly rate for this project.
+    pub rate_override: Option<f64>,
+}
+
+/// Parameters for the `update_project` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateProjectParams {
+    /// Client ID that owns this project.
+    pub client_id: String,
+    /// Project ID to update.
+    pub id: String,
+    /// New display name.
+    pub name: Option<String>,
+    /// New hex color.
+    pub color: Option<String>,
+    /// New rate override (use null to clear).
+    pub rate_override: Option<f64>,
+}
+
+/// Parameters for the `archive_project` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ArchiveProjectParams {
+    /// Client ID that owns this project.
+    pub client_id: String,
+    /// Project ID.
+    pub id: String,
+    /// Set to true to archive, false to unarchive.
+    pub archived: bool,
+}
+
+/// Parameters for the `create_activity` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateActivityParams {
+    /// Client ID that owns this activity.
+    pub client_id: String,
+    /// Unique activity ID within the client (lowercase, no spaces).
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// Hex color.
+    pub color: String,
+}
+
+/// Parameters for the `update_activity` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateActivityParams {
+    /// Client ID that owns this activity.
+    pub client_id: String,
+    /// Activity ID to update.
+    pub id: String,
+    /// New display name.
+    pub name: Option<String>,
+    /// New hex color.
+    pub color: Option<String>,
+}
+
+/// Parameters for the `archive_activity` tool.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ArchiveActivityParams {
+    /// Client ID that owns this activity.
+    pub client_id: String,
+    /// Activity ID.
+    pub id: String,
+    /// Set to true to archive, false to unarchive.
+    pub archived: bool,
+}

@@ -89,7 +89,8 @@ impl App {
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> color_eyre::Result<()> {
         let data_dir = self.timeline.data_dir();
-        let events = EventHandler::new(Duration::from_millis(250), data_dir);
+        let config_path = wdttg_core::config::config_path().ok();
+        let events = EventHandler::new(Duration::from_millis(250), data_dir, config_path);
 
         while !self.should_quit {
             terminal.draw(|frame| self.render(frame))?;
@@ -122,6 +123,9 @@ impl App {
                 }
                 AppEvent::FileChanged(month_key) => {
                     self.handle_file_changed(&month_key);
+                }
+                AppEvent::ConfigChanged => {
+                    self.handle_config_changed();
                 }
                 AppEvent::Resize | AppEvent::Tick => {}
             }
@@ -166,6 +170,14 @@ impl App {
                 self.handle_manage_action(action);
             }
             _ => {}
+        }
+    }
+
+    fn handle_config_changed(&mut self) {
+        if let Ok(new_config) = wdttg_core::config::load_config() {
+            self.config = new_config;
+            Self::sort_config(&mut self.config);
+            self.reports.needs_refresh = true;
         }
     }
 

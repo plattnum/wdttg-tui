@@ -64,11 +64,13 @@ fn test_config() -> AppConfig {
                         id: "dev".into(),
                         name: "Development".into(),
                         color: "#45B7D1".into(),
+                        archived: false,
                     },
                     Activity {
                         id: "meeting".into(),
                         name: "Meeting".into(),
                         color: "#96CEB4".into(),
+                        archived: false,
                     },
                 ],
             },
@@ -785,7 +787,7 @@ fn mcp_server_constructs_with_valid_state() {
     std::fs::create_dir_all(&data_dir).unwrap();
 
     let state = Arc::new(McpState {
-        config: test_config(),
+        config: std::sync::RwLock::new(test_config()),
         file_manager: FileManager::new(data_dir),
         cache: Mutex::new(MonthCache::default()),
     });

@@ -38,6 +38,8 @@ pub struct Activity {
     pub id: String,
     pub name: String,
     pub color: String,
+    #[serde(default)]
+    pub archived: bool,
 }
 
 #[cfg(test)]

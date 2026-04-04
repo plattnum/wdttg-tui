@@ -121,6 +121,7 @@ mod tests {
                         id: "dev".into(),
                         name: "Development".into(),
                         color: "#0000FF".into(),
+                        archived: false,
                     }],
                 },
                 Client {

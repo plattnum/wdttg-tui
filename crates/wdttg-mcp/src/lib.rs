@@ -2,7 +2,7 @@ pub mod helpers;
 pub mod params;
 pub mod server;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use rmcp::ServiceExt;
 use rmcp::transport::stdio;
@@ -24,7 +24,7 @@ pub async fn run_server(
         .init();
 
     let state = Arc::new(McpState {
-        config,
+        config: RwLock::new(config),
         file_manager,
         cache: Mutex::new(MonthCache::default()),
     });
