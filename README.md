@@ -1,16 +1,45 @@
 # wdttg - Where Did The Time Go?
 
-A terminal time tracker for freelancers, built in Rust.
+A terminal time tracker for freelancers, built in Rust. No cloud, no subscriptions, no app store approval queues. Just markdown files and a TUI.
 
-Ported from the [where-did-the-time-go](https://github.com/plattnum/where-did-the-time-go) Obsidian plugin.
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/plattnum)
+
+<!-- TODO: ![Timeline view](docs/images/timeline.png) -->
+
+## Why this exists
+
+I built the [where-did-the-time-go](https://github.com/plattnum/where-did-the-time-go) Obsidian plugin to scratch this itch the first time around. It worked great, but I got tired of being tied to a specific application platform. Plugin approval on Obsidian takes forever, and at the end of the day the data format was already just markdown tables.
+
+Markdown is everywhere now — every IDE reads it, every AI agent works well with it. So instead of fighting an approval process, I pulled the concept out into its own thing: a lightweight TUI for visualization and an MCP server so AI agents can do the heavy lifting.
+
+The core idea is dead simple: **I did X between A and B. Categorize it so I can report on it and bill from it.**
+
+This is not a task manager. My tasks live in tickets, ad-hoc journal entries, kanban boards — wherever makes sense at the time. This tool only cares about what you *did* and when. A meeting with a client. A two-hour dev session. A quick call that ran long. Log it, tag it, move on.
+
+## How it works with AI
+
+The MCP server is the real unlock here. Instead of clicking through forms, I just tell Claude what I did:
+
+> "I had a sprint planning meeting with Acme from 9 to 10:30 this morning"
+
+Claude calls the MCP tools, validates the entry, checks for overlaps, and logs it. If I'm too vague, it asks for the missing pieces.
+
+### Why MCP instead of letting the AI edit markdown directly?
+
+Without the MCP server, the AI would have to read the raw markdown into its context, parse the table, mentally compare timestamps to check for overlaps, format a new row correctly, and write the whole file back. Any of those steps can go wrong — the LLM might miscalculate a time comparison, botch the table formatting, or hallucinate that a time slot is free when it isn't. And every entry eats context tokens just to read and rewrite the file.
+
+With the MCP server, `create_entry` handles all of that programmatically — parsing, validation, overlap detection, chronological sorting, atomic file writes. The AI just says "create this entry" and gets back a definitive yes or a structured error. No guesswork, no wasted tokens, no risk of corrupting the file.
+
+The TUI and MCP server share the same data files, so entries created by AI show up in the timeline within ~200ms.
 
 ## Features
 
-- TUI for interactive time tracking with a vertical timeline view
-- MCP server for AI agent integration (Claude Code, etc.)
-- GFM markdown storage (one file per month in `~/.local/share/wdttg/data/`)
+- Infinite vertical timeline — endless scrolling into the past or future with keyboard and mouse
+- MCP server for AI agent integration (Claude Code, Cursor, etc.)
+- GFM markdown storage — one file per month, human-readable and editable
 - Client/project/activity hierarchy with billable rates
-- Overlap detection, time snapping, and report generation
+- Overlap detection and time snapping
+- Report generation with billable amounts
 - File watching for real-time sync between TUI and MCP
 
 ## Install
@@ -42,7 +71,7 @@ On first run, creates `~/.config/wdttg/config.toml` with a default "Personal" cl
 wdttg serve
 ```
 
-Starts the MCP server on stdio transport. The server exposes time tracking operations as MCP tools for AI agents.
+Starts the MCP server on stdio transport, exposing time tracking operations as tools for AI agents.
 
 ## MCP Server Setup
 
@@ -104,12 +133,6 @@ npx -y @modelcontextprotocol/inspector wdttg serve
 
 This opens a web UI (usually `http://localhost:6274`) where you can browse available tools, invoke them with custom inputs, and inspect results.
 
-### How it works
-
-The MCP server and TUI share the same data files in `~/.local/share/wdttg/data/`. The TUI watches for file changes, so entries created by an AI agent via MCP appear in the TUI within ~200ms.
-
-File locking (advisory locks via `fs2`) prevents data corruption when both are writing simultaneously.
-
 ## Configuration
 
 `~/.config/wdttg/config.toml` defines clients, projects, activities, and preferences.
@@ -150,6 +173,9 @@ Time entries are stored as GFM tables in `~/.local/share/wdttg/data/YYYY-MM.md`:
 | Start | End | Description | Client | Project | Activity | Notes |
 |-------|-----|-------------|--------|---------|----------|-------|
 | 2026-03-15 09:00 | 2026-03-15 10:30 | Sprint planning | acme | webapp | meeting | |
+| 2026-03-15 11:00 | 2026-03-15 13:00 | API auth refactor | acme | webapp | dev | ticket ACME-412 |
+| 2026-03-15 14:00 | 2026-03-15 14:30 | Quick sync with design team | acme | webapp | meeting | |
+| 2026-03-15 14:30 | 2026-03-15 17:00 | Frontend dashboard work | acme | webapp | dev | |
 ```
 
 ## Development
@@ -164,13 +190,19 @@ cargo clippy --all-targets     # Lint
 cargo fmt --check              # Check formatting
 ```
 
-## Workspace
+### Workspace
 
 | Crate | Purpose |
 |-------|---------|
 | `wdttg-core` | Library: parsing, validation, storage, reporting |
 | `wdttg-tui` | Binary: terminal UI (ratatui + crossterm) |
 | `wdttg-mcp` | Library: MCP server tool implementations |
+
+## Support
+
+If this is useful to you, consider buying me a coffee.
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/plattnum)
 
 ## License
 
