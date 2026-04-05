@@ -52,7 +52,11 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/plattnum/wdttg-tui/rele
 
 ### From source
 
+Requires [Rust](https://rustup.rs/) 1.85+ (2024 edition).
+
 ```bash
+git clone https://github.com/plattnum/wdttg-tui.git
+cd wdttg-tui
 cargo install --path crates/wdttg-tui
 ```
 
