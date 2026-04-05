@@ -168,12 +168,8 @@ fn run_init(force: bool) -> color_eyre::Result<()> {
         clients: vec![],
     };
 
-    // First client (skip if --force and clients.toml exists)
-    let clients_file = data_dir(&config)?.join("clients.toml");
-    if force && clients_file.exists() {
-        println!();
-        println!("Keeping existing client data.");
-    } else {
+    // First client
+    {
         println!();
         println!("Set up your first client:");
         let client_name = prompt("  Client name", "Personal")?;
