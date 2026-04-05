@@ -53,6 +53,8 @@ The TUI and MCP server share the same data files, so entries created by AI show 
 
 ## Install
 
+**macOS and Linux only.** Windows is not yet supported.
+
 ### From GitHub Releases (recommended)
 
 ```bash
