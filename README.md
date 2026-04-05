@@ -44,34 +44,61 @@ The TUI and MCP server share the same data files, so entries created by AI show 
 
 ## Install
 
+### From GitHub Releases (recommended)
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/plattnum/wdttg-tui/releases/latest/download/wdttg-tui-installer.sh | sh
+```
+
+### From source
+
 ```bash
 cargo install --path crates/wdttg-tui
 ```
 
-Or build from source:
+## Getting Started
+
+### 1. Initialize
 
 ```bash
-cargo build --release
-# Binary at target/release/wdttg
+wdttg init
 ```
 
-## Usage
+Interactive setup wizard — asks for time format (12h/24h), week start day, data directory, and your first client. Press Enter to accept defaults at each step.
 
-### TUI
+```
+Welcome to wdttg! Let's set things up.
+
+Time format [24h/12h] (24h): 
+Week start [monday/sunday] (monday): 
+Data directory (/Users/you/.local/share/wdttg/data): 
+
+Set up your first client:
+  Client name (Personal): Acme Corp
+  Hourly rate (0): 150
+  Currency (USD): 
+
+✓ Config saved to ~/.config/wdttg/config.toml
+✓ Client data saved to ~/.local/share/wdttg/data/clients.toml
+```
+
+### 2. Launch the TUI
 
 ```bash
 wdttg
 ```
 
-On first run, creates `~/.config/wdttg/config.toml` with a default "Personal" client and `~/.local/share/wdttg/data/` for time entries.
+### 3. Set up AI integration (optional)
 
-### MCP Server
+The MCP server is launched automatically by your AI client — you don't run `wdttg serve` manually. Just add the config and your AI can create/query time entries for you.
+
+See [MCP Server Setup](#mcp-server-setup) below.
+
+### Reinitialize
 
 ```bash
-wdttg serve
+wdttg init --force    # resets preferences, keeps existing data and clients
 ```
-
-Starts the MCP server on stdio transport, exposing time tracking operations as tools for AI agents.
 
 ## MCP Server Setup
 
@@ -108,16 +135,28 @@ If running from source instead of an installed binary:
 
 | Tool | Description |
 |------|-------------|
+| **Time entries** | |
 | `list_entries` | List time entries with date range, presets, and filters |
 | `get_entry` | Get a single entry by ID or start/end timestamps |
 | `create_entry` | Create a new time entry with validation and overlap checking |
 | `update_entry` | Update an entry (supports partial updates) |
 | `delete_entry` | Delete an entry by ID or timestamps |
 | `check_overlaps` | Check if a proposed time range conflicts with existing entries |
-| `generate_report` | Aggregated report by client/project/activity with billable amounts |
 | `available_slots` | Find free time gaps within a datetime range |
-| `list_clients` | List configured clients with projects and activities |
+| **Reports** | |
+| `generate_report` | Aggregated report by client/project/activity with billable amounts |
 | `get_status` | Today/week totals, entry counts, config summary |
+| **Clients & projects** | |
+| `list_clients` | List clients with their projects and activities |
+| `create_client` | Add a new client |
+| `update_client` | Update client fields |
+| `archive_client` | Archive/unarchive a client (cascades to projects + activities) |
+| `create_project` | Add a project under a client |
+| `update_project` | Update project fields |
+| `archive_project` | Archive/unarchive a project |
+| `create_activity` | Add an activity under a client |
+| `update_activity` | Update activity fields |
+| `archive_activity` | Archive/unarchive an activity |
 
 ### Testing with MCP Inspector
 
@@ -135,7 +174,11 @@ This opens a web UI (usually `http://localhost:6274`) where you can browse avail
 
 ## Configuration
 
-`~/.config/wdttg/config.toml` defines clients, projects, activities, and preferences.
+Configuration is split into two files:
+
+### Preferences — `~/.config/wdttg/config.toml`
+
+Machine-local settings. Created by `wdttg init`.
 
 ```toml
 [preferences]
@@ -144,6 +187,17 @@ week_start = "monday"
 day_start_hour = 6
 day_end_hour = 22
 snap_minutes = 15
+# data_dir = "/custom/path"   # optional, overrides default data location
+```
+
+### Client data — `<data_dir>/clients.toml`
+
+Clients, projects, activities, and billing info. Lives alongside time entries so the whole data directory is portable and syncable (git, Dropbox, etc.).
+
+```toml
+[bill_from]
+name = "Jane Freelancer"
+email = "jane@example.com"
 
 [[clients]]
 id = "acme"
