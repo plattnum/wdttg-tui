@@ -4,7 +4,16 @@ A terminal time tracker for freelancers, built in Rust. No cloud, no subscriptio
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/plattnum)
 
-<!-- TODO: ![Timeline view](docs/images/timeline.png) -->
+<img src="docs/images/wdttg_1_timeline_screenshot.png" alt="Timeline view" width="75%">
+
+<details>
+<summary>More screenshots</summary>
+
+<img src="docs/images/wdttg_2_reports_screenshot.png" alt="Reports view" width="75%">
+
+<img src="docs/images/wdttg_3_manage_screenshot.png" alt="Manage view" width="75%">
+
+</details>
 
 ## Why this exists
 
@@ -101,7 +110,16 @@ See [MCP Server Setup](#mcp-server-setup) below.
 ### Reinitialize
 
 ```bash
-wdttg init --force    # resets preferences, keeps existing data and clients
+wdttg init --force    # resets preferences and client data (keeps time entries)
+```
+
+### Upgrading
+
+After installing a new version, **restart any AI clients** (Claude Desktop, Claude Code, Cursor, etc.) that run the MCP server. They cache the old binary — the MCP server won't pick up changes until the AI client restarts and re-launches `wdttg serve`.
+
+```bash
+cargo install --path crates/wdttg-tui   # or download new release
+# Then restart Claude Desktop / reload Claude Code
 ```
 
 ## MCP Server Setup
