@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wdttg - Where Did The Time Go?</title>
+    <meta name="description" content="A terminal time tracker for freelancers. Track time with a beautiful TUI or let AI do it via MCP. No cloud, no subscriptions — just markdown files.">
+    <meta name="keywords" content="time tracker, freelancer, TUI, terminal, MCP, AI, Rust, CLI, time tracking, billing">
+    <meta name="author" content="plattnum">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="wdttg - Where Did The Time Go?">
+    <meta property="og:description" content="A terminal time tracker for freelancers. Track time with a TUI or let AI do it via MCP.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/plattnum/wdttg-tui/main/docs/images/wdttg_1_timeline_screenshot.png">
+    <meta property="og:url" content="https://plattnum.github.io/wdttg-tui">
+    <meta property="og:type" content="website">
+
+<style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --fg: #e6edf3;
+            --muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-dim: #1f6feb;
+            --success: #3fb950;
+            --warning: #d29922;
+            --purple: #bc8cff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+        }
+
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Nav */
+        nav {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav .logo {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--fg);
+        }
+        nav .logo span { color: var(--accent); }
+        nav .links { display: flex; gap: 24px; }
+        nav .links a { color: var(--muted); font-size: 0.9rem; }
+        nav .links a:hover { color: var(--fg); text-decoration: none; }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0 40px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+        .hero h1 span { color: var(--accent); }
+        .hero .tagline {
+            font-size: 1.25rem;
+            color: var(--muted);
+            max-width: 600px;
+            margin: 0 auto 32px;
+        }
+        .hero .cta {
+            display: inline-flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { text-decoration: none; opacity: 0.9; }
+        .btn-primary {
+            background: var(--accent-dim);
+            color: #fff;
+        }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--fg);
+            border: 1px solid var(--border);
+        }
+
+        /* Screenshot */
+        .screenshot {
+            padding: 40px 0;
+            text-align: center;
+        }
+        .screenshot img {
+            max-width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        /* Install */
+        .install {
+            padding: 40px 0;
+            text-align: center;
+        }
+        .install h2 {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 24px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: var(--success);
+            display: inline-block;
+            text-align: left;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        /* Features */
+        .features {
+            padding: 60px 0;
+        }
+        .features h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .feature .icon {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+        }
+        .feature h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .feature p {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        /* How it works */
+        .how-it-works {
+            padding: 60px 0;
+            border-top: 1px solid var(--border);
+        }
+        .how-it-works h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .how-it-works .subtitle {
+            text-align: center;
+            color: var(--muted);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 32px;
+            text-align: center;
+        }
+        .step .number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            color: #fff;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .step h3 { margin-bottom: 8px; }
+        .step p { color: var(--muted); font-size: 0.9rem; }
+        .step code {
+            background: var(--surface);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--success);
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 2rem; }
+            .hero .tagline { font-size: 1rem; }
+            .features h2, .how-it-works h2 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="container">
+        <div class="logo"><span>wdttg</span></div>
+        <div class="links">
+            <a href="https://github.com/plattnum/wdttg-tui">GitHub</a>
+            <a href="https://github.com/plattnum/wdttg-tui/releases">Releases</a>
+            <a href="https://www.buymeacoffee.com/plattnum">Support</a>
+        </div>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="container">
+        <h1>Where Did The <span>Time</span> Go?</h1>
+        <p class="tagline">
+            A terminal time tracker for freelancers. Beautiful TUI, AI-powered entry via MCP, and plain markdown storage you actually own.
+        </p>
+        <div class="cta">
+            <a href="https://github.com/plattnum/wdttg-tui/releases" class="btn btn-primary">Download</a>
+            <a href="https://github.com/plattnum/wdttg-tui" class="btn btn-secondary">View on GitHub</a>
+        </div>
+    </div>
+</section>
+
+<section class="screenshot">
+    <div class="container">
+        <img src="images/wdttg_1_timeline_screenshot.png" alt="wdttg timeline view showing time entries on a vertical scrollable timeline">
+    </div>
+</section>
+
+<section class="install">
+    <div class="container">
+        <h2>Install in seconds</h2>
+        <div class="code-block">
+            curl --proto '=https' --tlsv1.2 -LsSf https://github.com/plattnum/wdttg-tui/releases/latest/download/wdttg-tui-installer.sh | sh
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <div class="container">
+        <h2>Built for freelancers who value their time</h2>
+        <div class="feature-grid">
+            <div class="feature">
+                <div class="icon">&#9201;</div>
+                <h3>Infinite Timeline</h3>
+                <p>Vertical scrolling timeline — navigate days, weeks, and months with keyboard or mouse. No pagination, no limits.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">&#129302;</div>
+                <h3>AI-Powered Entry</h3>
+                <p>MCP server lets AI agents log time for you. Just say what you did — Claude handles the rest.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">&#128196;</div>
+                <h3>Markdown Storage</h3>
+                <p>GFM tables in plain files. Human-readable, git-friendly, no vendor lock-in. Your data is yours.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">&#128176;</div>
+                <h3>Billable Reports</h3>
+                <p>Aggregate by client, project, and activity. See hours and billable amounts at a glance.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">&#128274;</div>
+                <h3>No Cloud Required</h3>
+                <p>Everything runs locally. Sync via Dropbox, Google Drive, or git if you want — your choice.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">&#9889;</div>
+                <h3>Fast</h3>
+                <p>Built in Rust. Starts instantly, renders at 60fps, handles years of data without breaking a sweat.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="how-it-works">
+    <div class="container">
+        <h2>Up and running in 3 steps</h2>
+        <p class="subtitle">No account required. No configuration files to edit. Just install, init, and go.</p>
+        <div class="steps">
+            <div class="step">
+                <div class="number">1</div>
+                <h3>Install</h3>
+                <p>Download the binary or <code>cargo install</code> from source.</p>
+            </div>
+            <div class="step">
+                <div class="number">2</div>
+                <h3>Initialize</h3>
+                <p>Run <code>wdttg init</code> to set preferences and create your first client.</p>
+            </div>
+            <div class="step">
+                <div class="number">3</div>
+                <h3>Track</h3>
+                <p>Run <code>wdttg</code> to launch the TUI. Or let your AI agent log time via MCP.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <div class="links">
+            <a href="https://github.com/plattnum/wdttg-tui">GitHub</a>
+            <a href="https://github.com/plattnum/wdttg-tui/releases">Releases</a>
+            <a href="https://www.buymeacoffee.com/plattnum">Buy Me a Coffee</a>
+            <a href="https://github.com/plattnum/wdttg-tui/issues">Issues</a>
+        </div>
+        <p>MIT License &middot; Made by <a href="https://github.com/plattnum">plattnum</a></p>
+    </div>
+</footer>
+
+</body>
+</html>
