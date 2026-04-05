@@ -309,7 +309,7 @@ impl App {
 
     fn save_config(&mut self) {
         Self::sort_config(&mut self.config);
-        let _ = wdttg_core::config::save_config(&self.config);
+        let _ = wdttg_core::config::save_clients(&self.config);
     }
 
     fn sort_config(config: &mut AppConfig) {

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::error::{Error, Result};
 use crate::model::{Activity, Client, Project};
 
-use super::settings::{AppConfig, BillFrom, Preferences};
+use super::settings::{AppConfig, BillFrom, ClientDataFile, Preferences, PrefsFile};
 
 /// Returns the XDG config directory: $XDG_CONFIG_HOME/wdttg/ or ~/.config/wdttg/
 pub fn config_dir() -> Result<PathBuf> {
@@ -38,10 +38,20 @@ fn default_data_dir() -> Result<PathBuf> {
 /// Returns the data directory. Uses config.preferences.data_dir if set,
 /// otherwise the XDG data directory.
 pub fn data_dir(config: &AppConfig) -> Result<PathBuf> {
-    match &config.preferences.data_dir {
+    data_dir_from_prefs(&config.preferences)
+}
+
+/// Returns the data directory from preferences (avoids needing full AppConfig).
+fn data_dir_from_prefs(prefs: &Preferences) -> Result<PathBuf> {
+    match &prefs.data_dir {
         Some(dir) => Ok(dir.clone()),
         None => default_data_dir(),
     }
+}
+
+/// Returns the path to clients.toml in the data directory.
+pub fn clients_path(config: &AppConfig) -> Result<PathBuf> {
+    Ok(data_dir(config)?.join("clients.toml"))
 }
 
 /// Creates the config and data directories if they don't exist.
@@ -51,8 +61,10 @@ pub fn ensure_directories(config: &AppConfig) -> Result<()> {
     Ok(())
 }
 
-/// Load config from a specific path.
-pub fn load_config_from(path: &Path) -> Result<AppConfig> {
+// --- Load functions ---
+
+/// Load a TOML file and deserialize it.
+fn load_toml<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
     let contents = fs::read_to_string(path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             Error::NotFound
@@ -64,18 +76,47 @@ pub fn load_config_from(path: &Path) -> Result<AppConfig> {
         .map_err(|e| Error::Config(format!("failed to parse {}: {e}", path.display())))
 }
 
-/// Load config from the default XDG path.
+/// Load the full AppConfig from split files (config.toml + clients.toml).
+/// Handles migration from legacy single-file format.
 pub fn load_config() -> Result<AppConfig> {
-    load_config_from(&config_path()?)
+    let cfg_path = config_path()?;
+
+    // Load preferences from config.toml
+    let prefs_file: PrefsFile = load_toml(&cfg_path)?;
+    let data_path = data_dir_from_prefs(&prefs_file.preferences)?.join("clients.toml");
+
+    // Load clients from clients.toml in data directory
+    let client_data: ClientDataFile = match load_toml(&data_path) {
+        Ok(data) => data,
+        Err(Error::NotFound) => ClientDataFile {
+            bill_from: BillFrom::default(),
+            clients: vec![],
+        },
+        Err(e) => return Err(e),
+    };
+
+    Ok(AppConfig {
+        preferences: prefs_file.preferences,
+        bill_from: client_data.bill_from,
+        clients: client_data.clients,
+    })
 }
 
-/// Save config to a specific path with atomic write (write .tmp, then rename).
-pub fn save_config_to(config: &AppConfig, path: &Path) -> Result<()> {
+/// Load config from a specific path (legacy single-file format).
+/// Used by tests and migration.
+pub fn load_config_from(path: &Path) -> Result<AppConfig> {
+    load_toml(path)
+}
+
+// --- Save functions ---
+
+/// Atomic TOML write: serialize, write to .tmp, rename.
+fn save_toml_atomic<T: serde::Serialize>(value: &T, path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let toml_str = toml::to_string_pretty(config)
-        .map_err(|e| Error::Config(format!("failed to serialize config: {e}")))?;
+    let toml_str = toml::to_string_pretty(value)
+        .map_err(|e| Error::Config(format!("failed to serialize: {e}")))?;
     let tmp_path = path.with_extension("toml.tmp");
     fs::write(&tmp_path, &toml_str)?;
     fs::rename(&tmp_path, path).map_err(|e| {
@@ -84,9 +125,31 @@ pub fn save_config_to(config: &AppConfig, path: &Path) -> Result<()> {
     })
 }
 
-/// Save config to the default XDG path.
+/// Save preferences to config.toml.
 pub fn save_config(config: &AppConfig) -> Result<()> {
-    save_config_to(config, &config_path()?)
+    save_toml_atomic(
+        &PrefsFile {
+            preferences: config.preferences.clone(),
+        },
+        &config_path()?,
+    )
+}
+
+/// Save config to a specific path (legacy single-file format). Used by tests.
+pub fn save_config_to(config: &AppConfig, path: &Path) -> Result<()> {
+    save_toml_atomic(config, path)
+}
+
+/// Save client data (bill_from + clients) to clients.toml in the data directory.
+pub fn save_clients(config: &AppConfig) -> Result<()> {
+    let path = clients_path(config)?;
+    save_toml_atomic(
+        &ClientDataFile {
+            bill_from: config.bill_from.clone(),
+            clients: config.clients.clone(),
+        },
+        &path,
+    )
 }
 
 /// Creates a default configuration with sample clients, projects, and activities.
@@ -197,31 +260,33 @@ pub fn create_default_config() -> AppConfig {
     }
 }
 
-/// Load existing config, or create and save a default on first run.
-/// Uses XDG-compliant paths.
+/// Load existing config, or create and save defaults on first run.
+/// Writes config.toml (preferences) and clients.toml (client data) separately.
 pub fn load_or_create_default() -> Result<AppConfig> {
-    let path = config_path()?;
-    match load_config_from(&path) {
+    match load_config() {
         Ok(config) => Ok(config),
         Err(Error::NotFound) => {
             let config = create_default_config();
             ensure_directories(&config)?;
-            save_config_to(&config, &path)?;
+            save_config(&config)?;
+            save_clients(&config)?;
             Ok(config)
         }
         Err(e) => Err(e),
     }
 }
 
-/// Load existing config from a specific path, or create and save a default.
+/// Load existing config from specific paths, or create and save defaults.
 /// Used by tests with explicit temp directory paths.
 pub fn load_or_create_default_at(config_root: &Path, config_file: &Path) -> Result<AppConfig> {
     match load_config_from(config_file) {
         Ok(config) => Ok(config),
         Err(Error::NotFound) => {
             let config = create_default_config();
+            let data_dir = config_root.join("data");
             fs::create_dir_all(config_root)?;
-            fs::create_dir_all(config_root.join("data"))?;
+            fs::create_dir_all(&data_dir)?;
+            // Tests use legacy single-file format for simplicity
             save_config_to(&config, config_file)?;
             Ok(config)
         }
@@ -270,6 +335,61 @@ mod tests {
         assert_eq!(loaded.clients.len(), 2);
         assert_eq!(loaded.clients[0].id, "personal");
         assert_eq!(loaded.preferences.time_format, "24h");
+    }
+
+    #[test]
+    fn split_save_and_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_file = dir.path().join("config.toml");
+        let clients_file = dir.path().join("clients.toml");
+
+        let config = create_default_config();
+
+        // Save split files
+        save_toml_atomic(
+            &PrefsFile {
+                preferences: config.preferences.clone(),
+            },
+            &config_file,
+        )
+        .unwrap();
+        save_toml_atomic(
+            &ClientDataFile {
+                bill_from: config.bill_from.clone(),
+                clients: config.clients.clone(),
+            },
+            &clients_file,
+        )
+        .unwrap();
+
+        // Load back
+        let prefs: PrefsFile = load_toml(&config_file).unwrap();
+        let data: ClientDataFile = load_toml(&clients_file).unwrap();
+
+        assert_eq!(prefs.preferences.time_format, "24h");
+        assert_eq!(data.clients.len(), 2);
+        assert_eq!(data.clients[0].id, "personal");
+    }
+
+    #[test]
+    fn prefs_file_ignores_legacy_client_fields() {
+        // Old-format config.toml with clients — PrefsFile should parse fine
+        let toml_str = r##"
+[preferences]
+time_format = "12h"
+
+[bill_from]
+name = "Someone"
+
+[[clients]]
+id = "test"
+name = "Test"
+color = "#000"
+rate = 0.0
+currency = "USD"
+"##;
+        let prefs: PrefsFile = toml::from_str(toml_str).unwrap();
+        assert_eq!(prefs.preferences.time_format, "12h");
     }
 
     #[test]
@@ -343,6 +463,16 @@ time_format = "12h"
         unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
 
         assert_eq!(result, xdg_config.join("wdttg"));
+    }
+
+    #[test]
+    fn clients_path_in_data_dir() {
+        let mut config = create_default_config();
+        config.preferences.data_dir = Some(PathBuf::from("/my/data"));
+        assert_eq!(
+            clients_path(&config).unwrap(),
+            PathBuf::from("/my/data/clients.toml")
+        );
     }
 
     #[test]

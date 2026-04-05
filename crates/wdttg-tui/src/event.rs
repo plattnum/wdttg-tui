@@ -91,6 +91,8 @@ impl EventHandler {
 
                     if let Some(month_key) = extract_month_key(&event.path) {
                         let _ = tx.send(AppEvent::FileChanged(month_key));
+                    } else if event.path.file_name() == Some(std::ffi::OsStr::new("clients.toml")) {
+                        let _ = tx.send(AppEvent::ConfigChanged);
                     }
                 }
             },

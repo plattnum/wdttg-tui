@@ -653,7 +653,7 @@ impl WdttgMcpServer {
         };
         let result = json!({ "client": { "id": client.id, "name": client.name } });
         config.clients.push(client);
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -695,7 +695,7 @@ impl WdttgMcpServer {
             client.notes = Some(notes);
         }
         let result = json!({ "updated": true, "id": client.id, "name": client.name });
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -711,7 +711,7 @@ impl WdttgMcpServer {
         };
         client.archived = params.archived;
         let result = json!({ "id": client.id, "archived": client.archived });
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -740,7 +740,7 @@ impl WdttgMcpServer {
         };
         let result = json!({ "project": { "id": project.id, "name": project.name, "client_id": params.client_id } });
         client.projects.push(project);
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -765,7 +765,7 @@ impl WdttgMcpServer {
             project.rate_override = Some(rate_override);
         }
         let result = json!({ "updated": true, "id": project.id, "name": project.name });
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -782,7 +782,7 @@ impl WdttgMcpServer {
         };
         project.archived = params.archived;
         let result = json!({ "id": project.id, "archived": project.archived });
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -810,7 +810,7 @@ impl WdttgMcpServer {
         };
         let result = json!({ "activity": { "id": activity.id, "name": activity.name, "client_id": params.client_id } });
         client.activities.push(activity);
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -832,7 +832,7 @@ impl WdttgMcpServer {
             activity.color = color;
         }
         let result = json!({ "updated": true, "id": activity.id, "name": activity.name });
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()
@@ -849,7 +849,7 @@ impl WdttgMcpServer {
         };
         activity.archived = params.archived;
         let result = json!({ "id": activity.id, "archived": activity.archived });
-        if let Err(e) = config::save_config(&config) {
+        if let Err(e) = config::save_clients(&config) {
             return error_json(&e);
         }
         result.to_string()

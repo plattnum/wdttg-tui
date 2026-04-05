@@ -4,11 +4,31 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Client;
 
-/// Top-level application configuration, loaded from ~/.config/wdttg/config.toml.
+/// Combined in-memory application state. Loaded from two files:
+/// - Preferences from `~/.config/wdttg/config.toml`
+/// - Clients/bill_from from `<data_dir>/clients.toml`
+///
+/// Also supports the legacy single-file format for migration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub preferences: Preferences,
+    #[serde(default)]
+    pub bill_from: BillFrom,
+    #[serde(default)]
+    pub clients: Vec<Client>,
+}
+
+/// Preferences-only file format for config.toml.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrefsFile {
+    #[serde(default)]
+    pub preferences: Preferences,
+}
+
+/// Client data file format for clients.toml (lives in data directory).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClientDataFile {
     #[serde(default)]
     pub bill_from: BillFrom,
     #[serde(default)]
