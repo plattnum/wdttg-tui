@@ -109,6 +109,22 @@ fn run_init(force: bool) -> color_eyre::Result<()> {
         return Ok(());
     }
 
+    if force && cfg_path.exists() {
+        let config = load_config()?;
+        let data = data_dir(&config)?;
+        println!("⚠ This will overwrite your existing configuration:");
+        println!("  Config:  {}", cfg_path.display());
+        println!("  Clients: {}/clients.toml", data.display());
+        println!("  (Time entries will NOT be deleted)");
+        println!();
+        let confirm = prompt("Continue? [y/N]", "N")?;
+        if confirm.to_lowercase() != "y" {
+            println!("Aborted.");
+            return Ok(());
+        }
+        println!();
+    }
+
     println!("Welcome to wdttg! Let's set things up.");
     println!();
 
