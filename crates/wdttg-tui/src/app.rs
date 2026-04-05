@@ -175,6 +175,20 @@ impl App {
 
     fn handle_config_changed(&mut self) {
         if let Ok(new_config) = wdttg_core::config::load_config() {
+            // Skip reload if the config hasn't actually changed (avoids self-triggered loop
+            // when the app itself writes clients.toml and the file watcher fires)
+            if new_config.clients == self.config.clients
+                && new_config.bill_from.name == self.config.bill_from.name
+                && new_config.preferences.time_format == self.config.preferences.time_format
+                && new_config.preferences.week_start == self.config.preferences.week_start
+            {
+                return;
+            }
+            // Close any open entry form since its indices may now be stale
+            if self.entry_form.is_some() {
+                self.entry_form = None;
+                self.set_status("Config changed externally — form closed");
+            }
             self.config = new_config;
             Self::sort_config(&mut self.config);
             self.reports.needs_refresh = true;
@@ -309,7 +323,9 @@ impl App {
 
     fn save_config(&mut self) {
         Self::sort_config(&mut self.config);
-        let _ = wdttg_core::config::save_clients(&self.config);
+        if let Err(e) = wdttg_core::config::save_clients(&self.config) {
+            self.set_status(format!("Failed to save: {e}"));
+        }
     }
 
     fn sort_config(config: &mut AppConfig) {

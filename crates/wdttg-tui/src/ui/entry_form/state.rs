@@ -238,22 +238,26 @@ impl EntryFormState {
             .get(self.client_idx)
             .map(|c| &c.projects[..])
             .unwrap_or(&[]);
-        let count = projects.len() + 1; // +1 for None option
-        let start = self.project_idx;
-        loop {
-            if forward {
-                self.project_idx = (self.project_idx + 1) % count;
-            } else {
-                self.project_idx = (self.project_idx + count - 1) % count;
-            }
-            // Index 0 = None (always valid), otherwise skip archived
-            if self.project_idx == 0
-                || !projects[self.project_idx - 1].archived
-                || self.project_idx == start
-            {
-                break;
-            }
-        }
+        // Build valid indices: 0 (None) + non-archived projects
+        let valid: Vec<usize> = std::iter::once(0)
+            .chain(
+                projects
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, p)| !p.archived)
+                    .map(|(i, _)| i + 1),
+            )
+            .collect();
+        let pos = valid
+            .iter()
+            .position(|&i| i == self.project_idx)
+            .unwrap_or(0);
+        let new_pos = if forward {
+            (pos + 1) % valid.len()
+        } else {
+            (pos + valid.len() - 1) % valid.len()
+        };
+        self.project_idx = valid[new_pos];
     }
 
     pub fn cycle_activity(&mut self, config: &AppConfig, forward: bool) {
@@ -262,21 +266,25 @@ impl EntryFormState {
             .get(self.client_idx)
             .map(|c| &c.activities[..])
             .unwrap_or(&[]);
-        let count = activities.len() + 1;
-        let start = self.activity_idx;
-        loop {
-            if forward {
-                self.activity_idx = (self.activity_idx + 1) % count;
-            } else {
-                self.activity_idx = (self.activity_idx + count - 1) % count;
-            }
-            if self.activity_idx == 0
-                || !activities[self.activity_idx - 1].archived
-                || self.activity_idx == start
-            {
-                break;
-            }
-        }
+        let valid: Vec<usize> = std::iter::once(0)
+            .chain(
+                activities
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, a)| !a.archived)
+                    .map(|(i, _)| i + 1),
+            )
+            .collect();
+        let pos = valid
+            .iter()
+            .position(|&i| i == self.activity_idx)
+            .unwrap_or(0);
+        let new_pos = if forward {
+            (pos + 1) % valid.len()
+        } else {
+            (pos + valid.len() - 1) % valid.len()
+        };
+        self.activity_idx = valid[new_pos];
     }
 
     pub fn type_char(&mut self, ch: char) {
