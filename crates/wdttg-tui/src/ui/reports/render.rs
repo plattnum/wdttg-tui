@@ -101,7 +101,9 @@ fn render_header(frame: &mut Frame, area: Rect, state: &ReportsState, theme: &Th
         Span::styled("↑ ↓ ", Style::default().fg(theme.accent)),
         Span::styled("navigate  ", Style::default().fg(theme.muted)),
         Span::styled("Enter ", Style::default().fg(theme.accent)),
-        Span::styled("expand/collapse", Style::default().fg(theme.muted)),
+        Span::styled("expand/collapse  ", Style::default().fg(theme.muted)),
+        Span::styled("x ", Style::default().fg(theme.accent)),
+        Span::styled("export CSV", Style::default().fg(theme.muted)),
     ]);
     frame.render_widget(
         Paragraph::new(hints),

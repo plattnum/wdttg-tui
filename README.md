@@ -109,6 +109,16 @@ The MCP server is launched automatically by your AI client — you don't run `wd
 
 See [MCP Server Setup](#mcp-server-setup) below.
 
+### Export reports
+
+```bash
+wdttg export --format csv --preset this-month          # CSV to stdout
+wdttg export --format json --preset last-week           # JSON to stdout
+wdttg export --format csv --start 2026-03-01 --end 2026-03-31 --client acme > report.csv
+```
+
+Or press `x` on the Reports tab to export the current view as CSV to your data directory.
+
 ### Reinitialize
 
 ```bash

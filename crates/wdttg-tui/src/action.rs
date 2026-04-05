@@ -23,4 +23,6 @@ pub enum Action {
     ToggleArchive,
     /// Mark start/end of a time range on the timeline.
     MarkTime,
+    /// Export the current report.
+    Export,
 }

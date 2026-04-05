@@ -264,7 +264,52 @@ impl App {
             Action::NavigateUp => self.reports.move_up(),
             Action::NavigateDown => self.reports.move_down(),
             Action::Select => self.reports.toggle_expand(),
+            Action::Export => self.export_current_report(),
             _ => {}
+        }
+    }
+
+    fn export_current_report(&mut self) {
+        use wdttg_core::reporting::entries_to_csv;
+        use wdttg_core::storage::cache::MonthCache;
+
+        let data = match wdttg_core::config::data_dir(&self.config) {
+            Ok(d) => d,
+            Err(e) => {
+                self.set_status(format!("Export failed: {e}"));
+                return;
+            }
+        };
+
+        let file_manager = wdttg_core::storage::file_manager::FileManager::new(data.clone());
+        let mut cache = MonthCache::default();
+
+        let filter = wdttg_core::model::EntryFilter::default();
+        let entries = match wdttg_core::storage::load_filtered(
+            &self.reports.range,
+            &filter,
+            &file_manager,
+            &mut cache,
+        ) {
+            Ok(e) => e,
+            Err(e) => {
+                self.set_status(format!("Export failed: {e}"));
+                return;
+            }
+        };
+
+        let csv = entries_to_csv(&entries);
+        let preset = self.reports.preset_name().to_lowercase().replace(' ', "-");
+        let filename = format!("report-{preset}.csv");
+        let path = data.join(&filename);
+
+        let tmp_path = path.with_extension("csv.tmp");
+        match std::fs::write(&tmp_path, &csv).and_then(|()| std::fs::rename(&tmp_path, &path)) {
+            Ok(()) => self.set_status(format!("Exported to {}", path.display())),
+            Err(e) => {
+                let _ = std::fs::remove_file(&tmp_path);
+                self.set_status(format!("Export failed: {e}"));
+            }
         }
     }
 

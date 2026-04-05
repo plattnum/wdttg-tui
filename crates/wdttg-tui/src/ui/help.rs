@@ -34,6 +34,7 @@ const HELP_TEXT: &str = "\
   j / ↓         Navigate rows
   k / ↑         Navigate rows
   Enter         Expand/collapse client
+  x             Export CSV to data dir
 
  ─── Manage ───────────────────────────
   Tab / ← →     Switch pane

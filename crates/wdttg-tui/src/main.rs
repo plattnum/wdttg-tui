@@ -43,6 +43,24 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
+    /// Export time entries as CSV or aggregated report as JSON.
+    Export {
+        /// Output format: csv or json.
+        #[arg(long, default_value = "csv")]
+        format: String,
+        /// Date range preset: today, yesterday, this-week, last-week, this-month, last-month.
+        #[arg(long)]
+        preset: Option<String>,
+        /// Start date (YYYY-MM-DD). Used with --end for custom ranges.
+        #[arg(long)]
+        start: Option<String>,
+        /// End date (YYYY-MM-DD). Used with --start for custom ranges.
+        #[arg(long)]
+        end: Option<String>,
+        /// Filter by client ID.
+        #[arg(long)]
+        client: Option<String>,
+    },
 }
 
 fn main() -> color_eyre::Result<()> {
@@ -52,6 +70,13 @@ fn main() -> color_eyre::Result<()> {
     match cli.command {
         Some(Command::Serve) => run_mcp_server()?,
         Some(Command::Init { force }) => run_init(force)?,
+        Some(Command::Export {
+            format,
+            preset,
+            start,
+            end,
+            client,
+        }) => run_export(&format, preset, start, end, client)?,
         None => run_tui()?,
     }
 
@@ -77,6 +102,86 @@ fn run_tui() -> color_eyre::Result<()> {
     restore_terminal()?;
 
     result
+}
+
+fn run_export(
+    format: &str,
+    preset: Option<String>,
+    start: Option<String>,
+    end: Option<String>,
+    client: Option<String>,
+) -> color_eyre::Result<()> {
+    use chrono::NaiveDate;
+    use wdttg_core::model::{DateRange, EntryFilter, TimeRangePreset};
+    use wdttg_core::reporting::{entries_to_csv, generate_report, report_to_json};
+    use wdttg_core::storage::cache::MonthCache;
+
+    let config = require_config()?;
+    let data = data_dir(&config)?;
+    let file_manager = FileManager::new(data);
+    let mut cache = MonthCache::default();
+
+    let today = chrono::Local::now().date_naive();
+    let week_start = &config.preferences.week_start;
+
+    // Resolve date range
+    let range = if let Some(ref preset_str) = preset {
+        let preset = match preset_str.as_str() {
+            "today" => TimeRangePreset::Today,
+            "yesterday" => TimeRangePreset::Yesterday,
+            "this-week" => TimeRangePreset::ThisWeek,
+            "last-week" => TimeRangePreset::LastWeek,
+            "this-month" => TimeRangePreset::ThisMonth,
+            "last-month" => TimeRangePreset::LastMonth,
+            other => {
+                eprintln!(
+                    "Unknown preset: {other}. Use: today, yesterday, this-week, last-week, this-month, last-month"
+                );
+                std::process::exit(1);
+            }
+        };
+        DateRange::from_preset(preset, today, week_start)
+    } else if let (Some(s), Some(e)) = (&start, &end) {
+        let start_date = NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .map_err(|_| color_eyre::eyre::eyre!("Invalid start date: {s}. Use YYYY-MM-DD"))?;
+        let end_date = NaiveDate::parse_from_str(e, "%Y-%m-%d")
+            .map_err(|_| color_eyre::eyre::eyre!("Invalid end date: {e}. Use YYYY-MM-DD"))?;
+        if start_date > end_date {
+            return Err(color_eyre::eyre::eyre!(
+                "Start date must be before or equal to end date"
+            ));
+        }
+        DateRange::new(start_date, end_date)
+    } else if start.is_some() || end.is_some() {
+        return Err(color_eyre::eyre::eyre!(
+            "--start and --end must both be provided together"
+        ));
+    } else {
+        // Default to this month
+        DateRange::from_preset(TimeRangePreset::ThisMonth, today, week_start)
+    };
+
+    let filter = EntryFilter {
+        client,
+        ..Default::default()
+    };
+
+    let entries = wdttg_core::storage::load_filtered(&range, &filter, &file_manager, &mut cache)?;
+
+    match format {
+        "csv" => print!("{}", entries_to_csv(&entries)),
+        "json" => {
+            let reports = generate_report(&range, &entries, &config);
+            let total_minutes: i64 = reports.iter().map(|r| r.total_minutes).sum();
+            println!("{}", report_to_json(&reports, total_minutes));
+        }
+        other => {
+            eprintln!("Unknown format: {other}. Use: csv, json");
+            std::process::exit(1);
+        }
+    }
+
+    Ok(())
 }
 
 fn run_mcp_server() -> color_eyre::Result<()> {

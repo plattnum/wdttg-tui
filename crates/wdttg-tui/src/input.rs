@@ -4,7 +4,7 @@ use crate::action::Action;
 use crate::app::Screen;
 
 /// Map a key event to an action, considering the current screen.
-pub fn handle_key(key: KeyEvent, _screen: Screen, show_help: bool) -> Option<Action> {
+pub fn handle_key(key: KeyEvent, screen: Screen, show_help: bool) -> Option<Action> {
     // Help popup overrides: Esc or ? closes it
     if show_help {
         return match key.code {
@@ -51,6 +51,7 @@ pub fn handle_key(key: KeyEvent, _screen: Screen, show_help: bool) -> Option<Act
         KeyCode::Char('n') | KeyCode::Char('a') => Some(Action::Create),
         KeyCode::Char('e') => Some(Action::Edit),
         KeyCode::Char('d') => Some(Action::Delete),
+        KeyCode::Char('x') if screen == Screen::Reports => Some(Action::Export),
         KeyCode::Char(' ') => Some(Action::MarkTime),
         _ => None,
     }
