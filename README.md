@@ -290,7 +290,7 @@ cargo fmt --check              # Check formatting
 
 wdttg pairs well with [bulletd](https://github.com/plattnum/bulletd) — a terminal bullet journal built on the same principles: local-first, plain Markdown, MCP-enabled. Together they cover the daily workflow: bulletd captures *what* you need to do, wdttg captures *how long* it took. Both run as MCP servers, so your AI agent can manage your task log and time entries in the same conversation.
 
-The reality of contract work is that every organization has its own tracking system — Jira, Linear, Asana, whatever — and MCP integrations to those services are either nonexistent, not allowed, or painfully slow. These tools let you stay in flow locally, then reconcile back to the client's system on your own schedule.
+Organizational tracking systems — Jira, Linear, Asana — are built for planned work, not the ad-hoc reality of your day. You're not going to file a ticket for "check rollout status on Google Play Console" or "help debug staging." And MCP integrations to those systems are either nonexistent, not allowed, or painfully slow. These tools let you capture what actually happens locally, then reconcile back to the official system when it matters.
 
 ## Support
 
