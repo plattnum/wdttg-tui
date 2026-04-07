@@ -286,6 +286,10 @@ cargo fmt --check              # Check formatting
 | `wdttg-tui` | Binary: terminal UI (ratatui + crossterm) |
 | `wdttg-mcp` | Library: MCP server tool implementations |
 
+## Companion: bulletd
+
+wdttg pairs well with [bulletd](https://github.com/plattnum/bulletd) — a terminal bullet journal built on the same principles: local-first, plain Markdown, MCP-enabled. Together they cover the daily workflow: bulletd captures *what* you need to do, wdttg captures *how long* it took. Both run as MCP servers, so your AI agent can manage your task log and time entries in the same conversation.
+
 ## Support
 
 If this is useful to you, consider buying me a coffee.
