@@ -33,7 +33,7 @@ const HELP_TEXT: &str = "\
   ← / →         Change time period
   j / ↓         Navigate rows
   k / ↑         Navigate rows
-  Enter         Expand/collapse client
+  Enter         Expand/collapse client/project
   x             Export CSV to data dir
 
  ─── Manage ───────────────────────────

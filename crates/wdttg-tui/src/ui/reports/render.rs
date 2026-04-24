@@ -101,7 +101,10 @@ fn render_header(frame: &mut Frame, area: Rect, state: &ReportsState, theme: &Th
         Span::styled("↑ ↓ ", Style::default().fg(theme.accent)),
         Span::styled("navigate  ", Style::default().fg(theme.muted)),
         Span::styled("Enter ", Style::default().fg(theme.accent)),
-        Span::styled("expand/collapse  ", Style::default().fg(theme.muted)),
+        Span::styled(
+            "expand/collapse client or project  ",
+            Style::default().fg(theme.muted),
+        ),
         Span::styled("x ", Style::default().fg(theme.accent)),
         Span::styled("export CSV", Style::default().fg(theme.muted)),
     ]);
@@ -122,8 +125,7 @@ fn render_breakdown(frame: &mut Frame, area: Rect, state: &ReportsState, theme: 
         }
 
         let is_selected = visible_row == state.selected_row;
-        let is_expanded =
-            client_idx < state.expanded_clients.len() && state.expanded_clients[client_idx];
+        let is_expanded = state.is_client_expanded(client_idx);
 
         let client_color = Theme::parse_hex(&report.color).unwrap_or(theme.accent);
 
@@ -173,18 +175,24 @@ fn render_breakdown(frame: &mut Frame, area: Rect, state: &ReportsState, theme: 
         }
 
         // Project rows
-        for proj in &report.project_breakdown {
+        for (project_idx, proj) in report.project_breakdown.iter().enumerate() {
             if y >= max_y {
                 break;
             }
 
             let is_sel = visible_row == state.selected_row;
+            let is_proj_expanded = state.is_project_expanded(client_idx, project_idx);
             let proj_bg = if is_sel { theme.highlight_bg } else { theme.bg };
             let proj_color = Theme::parse_hex(&proj.color).unwrap_or(client_color);
             let proj_bar = percentage_bar_width(proj.percentage, area.width.saturating_sub(55));
+            let proj_expand_icon = if is_proj_expanded { "▼" } else { "▶" };
 
             let proj_line = Line::from(vec![
                 Span::styled("    ", Style::default()),
+                Span::styled(
+                    format!("{proj_expand_icon} "),
+                    Style::default().fg(theme.accent),
+                ),
                 Span::styled("● ", Style::default().fg(proj_color)),
                 Span::styled(&proj.name, Style::default().fg(theme.fg).bg(proj_bg)),
                 Span::styled(
@@ -207,6 +215,10 @@ fn render_breakdown(frame: &mut Frame, area: Rect, state: &ReportsState, theme: 
             );
             y += 1;
             visible_row += 1;
+
+            if !is_proj_expanded {
+                continue;
+            }
 
             // Activity rows
             for act in &proj.activity_breakdown {
