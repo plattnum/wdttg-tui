@@ -310,6 +310,83 @@ fn render_entry_card(
     );
     let dur_str = format_duration(entry.duration_minutes());
 
+    // Compact row: when the entry occupies only one visible slot (15-min entry, or
+    // a longer entry clipped to one row at a viewport edge), the regular tag line
+    // would be pushed off the bottom of the card. Narrow the block to fit the
+    // time/duration content and render tag chips in the grid space to the right.
+    if vis_height == 1 {
+        let mut tags: Vec<(&str, Color)> = vec![(entry.client.as_str(), client_color)];
+        if let Some(ref p) = entry.project {
+            let c = find_tag_color(config, &entry.client, p).unwrap_or(theme.accent_dim);
+            tags.push((p.as_str(), c));
+        }
+        if let Some(ref a) = entry.activity {
+            let c = find_tag_color(config, &entry.client, a).unwrap_or(theme.accent_dim);
+            tags.push((a.as_str(), c));
+        }
+
+        // Narrowed block layout (display columns):
+        //   "▎ "      = 2
+        //   time_str  = 13   ("HH:MM – HH:MM", en-dash counts as 1 col)
+        //   " {dur} " = dur_width + 2
+        //   "▎"       = 1
+        let dur_width = dur_str.chars().count() as u16;
+        let block_width: u16 = 2 + 13 + (dur_width + 2) + 1;
+
+        let mut spans: Vec<Span> = vec![
+            Span::styled("▎ ", border_style),
+            Span::styled(time_str.as_str(), Style::default().fg(fg).bg(bg)),
+            Span::styled(
+                format!(" {dur_str} "),
+                Style::default()
+                    .fg(theme.bg)
+                    .bg(client_color)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("▎", border_style),
+        ];
+
+        // Tag area: drop trailing chips one at a time until they fit.
+        // Layout: [2-col leading gap][chip1][1-col sep][chip2][1-col sep][chip3]
+        // Each chip is " TAG " (text length + 2). No background on gap or separators.
+        if content_width > block_width {
+            let tag_area_width = content_width - block_width;
+            let leading_gap: u16 = 2;
+            let separator: u16 = 1;
+
+            let mut visible: usize = 0;
+            let mut used: u16 = leading_gap;
+            for (i, (tag, _color)) in tags.iter().enumerate() {
+                let chip = (tag.chars().count() as u16) + 2;
+                let needed = chip + if i > 0 { separator } else { 0 };
+                if used + needed > tag_area_width {
+                    break;
+                }
+                used += needed;
+                visible += 1;
+            }
+
+            if visible > 0 {
+                spans.push(Span::raw("  "));
+                for (i, (tag, color)) in tags.iter().take(visible).enumerate() {
+                    if i > 0 {
+                        spans.push(Span::raw(" "));
+                    }
+                    spans.push(Span::styled(
+                        format!(" {} ", tag.to_uppercase()),
+                        Style::default()
+                            .fg(Color::White)
+                            .bg(*color)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                }
+            }
+        }
+
+        frame.render_widget(Paragraph::new(Line::from(spans)), card_area);
+        return;
+    }
+
     // Line 1: time + duration badge
     let line1 = vec![
         Span::styled("▎ ", border_style),
