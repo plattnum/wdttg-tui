@@ -184,6 +184,26 @@
             color: var(--accent);
             white-space: nowrap;
         }
+        .whats-new .preview {
+            margin: 16px 0 4px;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            text-align: center;
+        }
+        .whats-new .preview img {
+            max-width: 100%;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+        .whats-new .preview .caption {
+            color: var(--muted);
+            font-size: 0.78rem;
+            margin-top: 10px;
+            font-style: italic;
+        }
 
         /* Install */
         .install {
@@ -351,6 +371,10 @@
                 <li><strong>Tags survive on tiny entries.</strong> 15-minute entries used to drop their tag chips off the bottom of the card. Now the block narrows and chips render in the grid space to the right.</li>
                 <li><strong>Config-watcher honours <code>tag_style</code>.</strong> Editing the style in <code>config.toml</code> while the TUI is running now triggers a reload.</li>
             </ul>
+            <div class="preview">
+                <img src="images/wdttg_v0.5.0_powerline_tags.png" alt="wdttg timeline with powerline-style tag chips: two 15-minute entries at 12:00 and 12:15 show their colored tag chips rendered to the right of a narrowed block, while the 1-hour entry at 12:30 shows the chips inside the block on the bottom row">
+                <p class="caption">Both v0.5.0 fixes in one shot: 15-minute entries (12:00 and 12:15) keep their tag chips by rendering them to the right of a narrowed block, and chips themselves use the new powerline chevrons.</p>
+            </div>
             <p class="footnote"><strong>Note:</strong> the <code>powerline</code> style requires a Powerline / Nerd Font in your terminal — without one, the chevron glyphs render as boxes. Use <code>triangle</code> or <code>flat</code> if your font lacks Powerline glyphs.</p>
         </div>
     </div>
