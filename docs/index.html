@@ -122,6 +122,69 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
 
+        /* What's new */
+        .whats-new {
+            padding: 40px 0 20px;
+        }
+        .whats-new .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 8px;
+            padding: 20px 24px;
+        }
+        .whats-new .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .whats-new .header h2 {
+            font-size: 1.05rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .whats-new .badge {
+            display: inline-block;
+            background: var(--accent-dim);
+            color: var(--fg);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .whats-new ul {
+            margin: 0 0 12px 1.2rem;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+        .whats-new ul li { margin-bottom: 6px; }
+        .whats-new ul li strong { color: var(--fg); }
+        .whats-new .footnote {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+        .whats-new .footnote code {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85em;
+            color: var(--purple);
+        }
+        .whats-new .release-link {
+            font-size: 0.85rem;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
         /* Install */
         .install {
             padding: 40px 0;
@@ -273,6 +336,23 @@
 <section class="screenshot">
     <div class="container">
         <img src="images/wdttg_1_timeline_screenshot.png" alt="wdttg timeline view showing time entries on a vertical scrollable timeline">
+    </div>
+</section>
+
+<section class="whats-new">
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h2><span class="badge">v0.5.0</span> What's new</h2>
+                <a class="release-link" href="https://github.com/plattnum/wdttg-tui/releases/tag/v0.5.0">View release →</a>
+            </div>
+            <ul>
+                <li><strong>Powerline-style tag chips.</strong> New <code>tag_style</code> preference (<code>flat</code>, <code>powerline</code>, <code>triangle</code>) controls how tag chips are separated on timeline entries. Press <code>T</code> in the TUI to cycle styles at runtime — your choice persists.</li>
+                <li><strong>Tags survive on tiny entries.</strong> 15-minute entries used to drop their tag chips off the bottom of the card. Now the block narrows and chips render in the grid space to the right.</li>
+                <li><strong>Config-watcher honours <code>tag_style</code>.</strong> Editing the style in <code>config.toml</code> while the TUI is running now triggers a reload.</li>
+            </ul>
+            <p class="footnote"><strong>Note:</strong> the <code>powerline</code> style requires a Powerline / Nerd Font in your terminal — without one, the chevron glyphs render as boxes. Use <code>triangle</code> or <code>flat</code> if your font lacks Powerline glyphs.</p>
+        </div>
     </div>
 </section>
 

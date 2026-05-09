@@ -221,8 +221,11 @@ week_start = "monday"
 day_start_hour = 6
 day_end_hour = 22
 snap_minutes = 15
+tag_style = "flat"            # "flat" | "powerline" | "triangle"
 # data_dir = "/custom/path"   # optional, overrides default data location
 ```
+
+`tag_style` controls how tag chips are separated on timeline entries. `flat` is the default and works on any terminal. `powerline` uses Powerline chevron glyphs (U+E0B0) that blend chip colors — **requires a Powerline / Nerd Font** in your terminal. `triangle` uses U+25B6 and works on any Unicode terminal but doesn't blend as smoothly. Press `T` in the TUI to cycle styles at runtime; the chosen style is persisted to this file.
 
 ### Client data — `<data_dir>/clients.toml`
 
