@@ -27,6 +27,7 @@ pub fn handle_key(key: KeyEvent, screen: Screen, show_help: bool) -> Option<Acti
         KeyCode::Char('2') => return Some(Action::SwitchToReports),
         KeyCode::Char('3') => return Some(Action::SwitchToManage),
         KeyCode::Char('?') => return Some(Action::ToggleHelp),
+        KeyCode::Char('T') => return Some(Action::CycleTagStyle),
         KeyCode::Esc => return Some(Action::ClosePopup),
         _ => {}
     }

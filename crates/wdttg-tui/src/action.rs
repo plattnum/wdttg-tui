@@ -25,4 +25,6 @@ pub enum Action {
     MarkTime,
     /// Export the current report.
     Export,
+    /// Cycle through tag chip visual styles (flat → powerline → triangle).
+    CycleTagStyle,
 }

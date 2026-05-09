@@ -6,4 +6,4 @@ pub use loader::{
     load_config, load_config_from, load_or_create_default, load_or_create_default_at, save_clients,
     save_config, save_config_to,
 };
-pub use settings::{AppConfig, BillFrom, ClientDataFile, Preferences, PrefsFile};
+pub use settings::{AppConfig, BillFrom, ClientDataFile, Preferences, PrefsFile, TagStyle};

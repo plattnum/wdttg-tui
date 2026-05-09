@@ -35,6 +35,43 @@ pub struct ClientDataFile {
     pub clients: Vec<Client>,
 }
 
+/// Visual style for tag chips on timeline entries.
+///
+/// - `Flat`: each chip rendered with a 1-col space separator. Works on any terminal.
+/// - `Powerline`: chips separated by U+E0B0 right-triangle chevrons that blend
+///   between adjacent chip colors. Requires a Powerline / Nerd Font in the terminal.
+/// - `Triangle`: chips separated by U+25B6 black right-pointing triangle. Works on
+///   any Unicode terminal but doesn't blend as smoothly as the Powerline glyph.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TagStyle {
+    #[default]
+    Flat,
+    Powerline,
+    Triangle,
+}
+
+impl TagStyle {
+    /// Next style in cycle order. Used by the TUI's tag-style toggle key.
+    pub fn next(self) -> Self {
+        match self {
+            Self::Flat => Self::Powerline,
+            Self::Powerline => Self::Triangle,
+            Self::Triangle => Self::Flat,
+        }
+    }
+
+    /// Lowercase display name, matches the `serde(rename_all = "lowercase")`
+    /// representation used in config.toml.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Flat => "flat",
+            Self::Powerline => "powerline",
+            Self::Triangle => "triangle",
+        }
+    }
+}
+
 /// User preferences for display and behavior.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Preferences {
@@ -52,6 +89,8 @@ pub struct Preferences {
     pub description_max_length: u32,
     #[serde(default)]
     pub data_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub tag_style: TagStyle,
 }
 
 impl Default for Preferences {
@@ -64,6 +103,7 @@ impl Default for Preferences {
             snap_minutes: default_snap_minutes(),
             description_max_length: default_description_max_length(),
             data_dir: None,
+            tag_style: TagStyle::default(),
         }
     }
 }
@@ -115,6 +155,51 @@ mod tests {
         assert_eq!(prefs.snap_minutes, 15);
         assert_eq!(prefs.description_max_length, 200);
         assert!(prefs.data_dir.is_none());
+        assert_eq!(prefs.tag_style, TagStyle::Flat);
+    }
+
+    #[test]
+    fn tag_style_parses_lowercase_variants() {
+        let toml_str = r#"
+[preferences]
+tag_style = "powerline"
+"#;
+        let prefs: PrefsFile = toml::from_str(toml_str).unwrap();
+        assert_eq!(prefs.preferences.tag_style, TagStyle::Powerline);
+
+        let toml_str = r#"
+[preferences]
+tag_style = "triangle"
+"#;
+        let prefs: PrefsFile = toml::from_str(toml_str).unwrap();
+        assert_eq!(prefs.preferences.tag_style, TagStyle::Triangle);
+
+        let toml_str = r#"
+[preferences]
+tag_style = "flat"
+"#;
+        let prefs: PrefsFile = toml::from_str(toml_str).unwrap();
+        assert_eq!(prefs.preferences.tag_style, TagStyle::Flat);
+    }
+
+    #[test]
+    fn tag_style_defaults_to_flat_when_missing() {
+        let prefs: PrefsFile = toml::from_str("").unwrap();
+        assert_eq!(prefs.preferences.tag_style, TagStyle::Flat);
+    }
+
+    #[test]
+    fn tag_style_cycles_flat_powerline_triangle() {
+        assert_eq!(TagStyle::Flat.next(), TagStyle::Powerline);
+        assert_eq!(TagStyle::Powerline.next(), TagStyle::Triangle);
+        assert_eq!(TagStyle::Triangle.next(), TagStyle::Flat);
+    }
+
+    #[test]
+    fn tag_style_name_matches_serde_repr() {
+        assert_eq!(TagStyle::Flat.name(), "flat");
+        assert_eq!(TagStyle::Powerline.name(), "powerline");
+        assert_eq!(TagStyle::Triangle.name(), "triangle");
     }
 
     #[test]

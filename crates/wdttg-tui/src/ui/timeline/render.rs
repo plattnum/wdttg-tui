@@ -4,7 +4,7 @@ use ratatui::widgets::{
     Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
 };
 
-use wdttg_core::config::AppConfig;
+use wdttg_core::config::{AppConfig, TagStyle};
 use wdttg_core::model::TimeEntry;
 use wdttg_core::time_utils::format_duration;
 
@@ -93,7 +93,9 @@ fn render_day_header(frame: &mut Frame, area: Rect, state: &TimelineState, theme
         Span::styled("Space ", Style::default().fg(theme.accent)),
         Span::styled("mark  ", Style::default().fg(theme.muted)),
         Span::styled("j/k ", Style::default().fg(theme.accent)),
-        Span::styled("scroll", Style::default().fg(theme.muted)),
+        Span::styled("scroll  ", Style::default().fg(theme.muted)),
+        Span::styled("T ", Style::default().fg(theme.accent)),
+        Span::styled("tags", Style::default().fg(theme.muted)),
     ]);
     frame.render_widget(
         Paragraph::new(hints),
@@ -346,41 +348,25 @@ fn render_entry_card(
             Span::styled("▎", border_style),
         ];
 
-        // Tag area: drop trailing chips one at a time until they fit.
-        // Layout: [2-col leading gap][chip1][1-col sep][chip2][1-col sep][chip3]
-        // Each chip is " TAG " (text length + 2). No background on gap or separators.
-        if content_width > block_width {
-            let tag_area_width = content_width - block_width;
-            let leading_gap: u16 = 2;
-            let separator: u16 = 1;
+        // Tag area: drop trailing chips one at a time until the rendered width
+        // (leading gap + chips + separators/chevrons) fits in the space to the
+        // right of the narrowed block. Style is chosen by config.
+        let style = config.preferences.tag_style;
+        let leading_gap: u16 = 2;
+        let tag_area_width = content_width.saturating_sub(block_width);
 
-            let mut visible: usize = 0;
-            let mut used: u16 = leading_gap;
-            for (i, (tag, _color)) in tags.iter().enumerate() {
-                let chip = (tag.chars().count() as u16) + 2;
-                let needed = chip + if i > 0 { separator } else { 0 };
-                if used + needed > tag_area_width {
-                    break;
-                }
-                used += needed;
-                visible += 1;
+        let mut visible_n = tags.len();
+        while visible_n > 0 {
+            let w = leading_gap + tag_segments_width(&tags[..visible_n], style);
+            if w <= tag_area_width {
+                break;
             }
+            visible_n -= 1;
+        }
 
-            if visible > 0 {
-                spans.push(Span::raw("  "));
-                for (i, (tag, color)) in tags.iter().take(visible).enumerate() {
-                    if i > 0 {
-                        spans.push(Span::raw(" "));
-                    }
-                    spans.push(Span::styled(
-                        format!(" {} ", tag.to_uppercase()),
-                        Style::default()
-                            .fg(Color::White)
-                            .bg(*color)
-                            .add_modifier(Modifier::BOLD),
-                    ));
-                }
-            }
+        if visible_n > 0 {
+            spans.push(Span::raw("  "));
+            spans.extend(build_tag_segments(&tags[..visible_n], style, None));
         }
 
         frame.render_widget(Paragraph::new(Line::from(spans)), card_area);
@@ -400,7 +386,7 @@ fn render_entry_card(
         ),
     ];
 
-    // Build tag line
+    // Build tag line — chip style is chosen by config.preferences.tag_style.
     let mut tag_spans = vec![Span::styled("▎ ", border_style)];
     let mut tags: Vec<(&str, Color)> = vec![(&entry.client, client_color)];
     if let Some(ref p) = entry.project {
@@ -411,18 +397,11 @@ fn render_entry_card(
         let c = find_tag_color(config, &entry.client, a).unwrap_or(theme.accent_dim);
         tags.push((a, c));
     }
-    for (i, (tag, color)) in tags.iter().enumerate() {
-        if i > 0 {
-            tag_spans.push(Span::styled(" ", Style::default().bg(bg)));
-        }
-        tag_spans.push(Span::styled(
-            format!(" {} ", tag.to_uppercase()),
-            Style::default()
-                .fg(Color::White)
-                .bg(*color)
-                .add_modifier(Modifier::BOLD),
-        ));
-    }
+    tag_spans.extend(build_tag_segments(
+        &tags,
+        config.preferences.tag_style,
+        Some(bg),
+    ));
     let tag_line = Line::from(tag_spans);
 
     let mut lines = vec![Line::from(line1)];
@@ -554,4 +533,75 @@ fn dim_color(color: Color, percent: u8) -> Color {
         ),
         _ => Color::Rgb(30, 30, 40),
     }
+}
+
+/// Glyph used to separate tag chips for chevron-style modes. `None` means flat
+/// (space-separated chips, no glyph).
+fn chevron_glyph(style: TagStyle) -> Option<&'static str> {
+    match style {
+        TagStyle::Flat => None,
+        TagStyle::Powerline => Some("\u{E0B0}"),
+        TagStyle::Triangle => Some("\u{25B6}"),
+    }
+}
+
+/// Total display width of a tag-chip sequence, including separators/chevrons but
+/// excluding any leading gap. Each chip is `" TAG "` (text length + 2). Flat
+/// style uses `n - 1` single-col separators; chevron styles use `n` chevrons
+/// (one between each adjacent pair plus one trailing).
+fn tag_segments_width(tags: &[(&str, Color)], style: TagStyle) -> u16 {
+    let chip_total: u16 = tags.iter().map(|(t, _)| t.chars().count() as u16 + 2).sum();
+    let separator_total = match style {
+        TagStyle::Flat => tags.len().saturating_sub(1) as u16,
+        TagStyle::Powerline | TagStyle::Triangle => tags.len() as u16,
+    };
+    chip_total + separator_total
+}
+
+/// Build the spans for a tag-chip sequence.
+///
+/// `outside_bg` is the background colour the chips sit on top of:
+/// - `Some(c)` = the chips are inside a coloured block (regular path); flat
+///   separators get `bg(c)` so they match the surrounding fill, and the trailing
+///   chevron transitions back to `c`.
+/// - `None` = the chips sit on the bare grid (compact path); flat separators
+///   render with no background, and the trailing chevron transitions to the
+///   terminal default.
+fn build_tag_segments<'a>(
+    tags: &[(&'a str, Color)],
+    style: TagStyle,
+    outside_bg: Option<Color>,
+) -> Vec<Span<'a>> {
+    let mut out: Vec<Span<'a>> = Vec::with_capacity(tags.len() * 2);
+    let n = tags.len();
+    let chevron = chevron_glyph(style);
+    let sep_style = match outside_bg {
+        Some(bg) => Style::default().bg(bg),
+        None => Style::default(),
+    };
+
+    for (i, (tag, color)) in tags.iter().enumerate() {
+        if i > 0 && chevron.is_none() {
+            out.push(Span::styled(" ", sep_style));
+        }
+        out.push(Span::styled(
+            format!(" {} ", tag.to_uppercase()),
+            Style::default()
+                .fg(Color::White)
+                .bg(*color)
+                .add_modifier(Modifier::BOLD),
+        ));
+        if let Some(glyph) = chevron {
+            let chevron_style = if i + 1 < n {
+                Style::default().fg(*color).bg(tags[i + 1].1)
+            } else {
+                match outside_bg {
+                    Some(bg) => Style::default().fg(*color).bg(bg),
+                    None => Style::default().fg(*color),
+                }
+            };
+            out.push(Span::styled(glyph, chevron_style));
+        }
+    }
+    out
 }

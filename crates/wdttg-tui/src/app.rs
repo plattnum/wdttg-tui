@@ -147,6 +147,7 @@ impl App {
                 self.show_help = !self.show_help;
                 self.help_scroll = 0;
             }
+            Action::CycleTagStyle => self.cycle_tag_style(),
             Action::ClosePopup => {
                 if self.timeline.mark_start.is_some() {
                     self.timeline.mark_start = None;
@@ -176,11 +177,12 @@ impl App {
     fn handle_config_changed(&mut self) {
         if let Ok(new_config) = wdttg_core::config::load_config() {
             // Skip reload if the config hasn't actually changed (avoids self-triggered loop
-            // when the app itself writes clients.toml and the file watcher fires)
+            // when the app itself writes clients.toml or config.toml and the file watcher fires)
             if new_config.clients == self.config.clients
                 && new_config.bill_from.name == self.config.bill_from.name
                 && new_config.preferences.time_format == self.config.preferences.time_format
                 && new_config.preferences.week_start == self.config.preferences.week_start
+                && new_config.preferences.tag_style == self.config.preferences.tag_style
             {
                 return;
             }
@@ -370,6 +372,15 @@ impl App {
         Self::sort_config(&mut self.config);
         if let Err(e) = wdttg_core::config::save_clients(&self.config) {
             self.set_status(format!("Failed to save: {e}"));
+        }
+    }
+
+    fn cycle_tag_style(&mut self) {
+        let next = self.config.preferences.tag_style.next();
+        self.config.preferences.tag_style = next;
+        match wdttg_core::config::save_config(&self.config) {
+            Ok(()) => self.set_status(format!("Tag style: {}", next.name())),
+            Err(e) => self.set_status(format!("Tag style: {} (save failed: {e})", next.name())),
         }
     }
 

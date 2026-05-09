@@ -12,6 +12,7 @@ const HELP_TEXT: &str = "\
   2             Reports screen
   3             Manage screen
   ?             Toggle this help
+  T             Cycle tag chip style
   Esc           Close popup / cancel
 
  ─── Timeline ─────────────────────────
